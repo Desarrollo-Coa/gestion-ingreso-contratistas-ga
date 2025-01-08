@@ -15,38 +15,33 @@ const storage = multer.diskStorage({
 });
 
 // Configuración de multer para permitir archivos grandes
-const upload = multer({ 
+const upload = multer({
     storage: storage,
-    limits: { 
-        fileSize: 100 * 1024 * 1024 // Limitar el tamaño de los archivos a 100MB (ajusta este valor según lo que necesites)
+    limits: {
+        fileSize: 100 * 1024 * 1024 // Limitar el tamaño de los archivos a 100MB
     }
 });
 
-// Route for contractor view
-router.get('/vista-contratista', (req, res) => {
-    console.log('[RUTA] Se accede a la vista del contratista');
-    controller.vistaContratista(req, res);
-});
-
-router.post('/generar-solicitud', upload.fields([
+// Ruta para subir los archivos del contratista
+router.post('/subirArchivosContratista', upload.fields([
     { name: 'arl', maxCount: 1 },
     { name: 'pasocial', maxCount: 1 },
-    { name: 'foto[]', maxCount: 25 }, // Aceptar hasta 25 fotos
-    { name: 'cedulaFoto[]', maxCount: 25 } // Aceptar hasta 25 cédulas
+    { name: 'foto[]', maxCount: 25 },
+    { name: 'cedulaFoto[]', maxCount: 25 }
 ]), (err, req, res, next) => {
     if (err) {
         console.error('Error al subir los archivos:', err);
         return res.status(400).send('Error al subir los archivos');
     }
-    next();
-}, (req, res) => {
-    console.log('Body:', req.body);  // Muestra los campos del formulario
-    console.log('Files:', req.files); // Muestra los archivos enviados
-    controller.crearSolicitud(req, res);  // Llama al controlador
+    console.log('Archivos subidos correctamente');
+    return res.status(200).send('Archivos subidos correctamente');
 });
 
-
-
+// Ruta para generar la solicitud
+router.post('/generar-solicitud', (req, res) => {
+    console.log('Datos recibidos en generar-solicitud:', req.body);
+    controller.crearSolicitud(req, res);
+});
 
 // Ruta para detener la labor de una solicitud
 router.put('/solicitudes/:solicitudId/detener-labor', (req, res) => {
@@ -54,4 +49,11 @@ router.put('/solicitudes/:solicitudId/detener-labor', (req, res) => {
     controller.detenerLabor(req, res);  // Llama al controlador para detener la labor
 });
 
+ 
+// Route for contractor view
+router.get('/vista-contratista', (req, res) => {
+    console.log('[RUTA] Se accede a la vista del contratista');
+    controller.vistaContratista(req, res);
+});
+  
 module.exports = router;
