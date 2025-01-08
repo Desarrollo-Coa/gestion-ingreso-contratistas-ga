@@ -322,68 +322,53 @@
     }
 
     // Manejador del evento de submit para evitar envíos múltiples
-document.getElementById('formulario').addEventListener('submit', async function (event) {
-  event.preventDefault(); // Previene el comportamiento por defecto del formulario (enviar)
+    document.getElementById('formulario').addEventListener('submit', async function (event) {
+      event.preventDefault(); // Previene el comportamiento por defecto del formulario (enviar)
 
-  const submitButton = document.getElementById('submitButton');
-  submitButton.disabled = true; // Deshabilitar el botón para prevenir un segundo clic
+      const submitButton = document.getElementById('submitButton');
+      submitButton.disabled = true; // Deshabilitar el botón para prevenir un segundo clic
 
-  // Mostrar una advertencia al usuario
-  submitButton.innerHTML = 'Enviando...';
+      // Mostrar una advertencia al usuario
+      submitButton.innerHTML = 'Enviando...';
+ 
 
-  const formData = new FormData(this);
-  formData.forEach((value, key) => {
-    console.log(key, value);  // Log de los datos que estamos enviando
-  });
+       
 
-  // Log de los datos para verificar
-  console.log("Datos del formulario a enviar:", formData);
-  for (const [key, value] of formData.entries()) {
-    console.log(`${key}: ${value}`);
-  }
+      const formData = new FormData(this);
+      formData.forEach((value, key) => {
+      console.log(key, value);  
+      });
 
-  // Primero, subimos los archivos al servidor externo
-  try {
-    const responseSubidaArchivos = await fetch('https://83.147.38.41/subirArchivosContratista', {
-      method: 'POST',
-      body: formData
+
+      // Log de los datos para verificar
+      console.log("Datos del formulario a enviar:", formData);
+      for (const [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+      }
+
+      // Enviar los datos al servidor
+      try {
+        const response = await fetch('/generar-solicitud', {
+          method: 'POST',
+          body: formData
+        });
+
+        // Verificar si la solicitud fue exitosa
+        if (response.ok) {
+          swal('Solicitud enviada correctamente');
+        } else {
+          swal('Error al enviar la solicitud');
+        }
+      } catch (error) {
+        console.error('Error al enviar la solicitud:', error);
+        swal('Error de conexión');
+      } finally {
+        // Reactivar el botón de submit en caso de que falle la solicitud
+        submitButton.disabled = false;
+        submitButton.innerHTML = 'Enviar';
+        document.getElementById('formulario').reset();
+      }
     });
-
-    if (!responseSubidaArchivos.ok) {
-      throw new Error('Error al subir los archivos');
-    }
-    console.log('Archivos subidos correctamente');
-  } catch (error) {
-    console.error('Error al subir los archivos:', error);
-    swal('Error de conexión al subir los archivos');
-    submitButton.disabled = false;
-    submitButton.innerHTML = 'Enviar';
-    return; // Salir de la función si la subida de archivos falla
-  }
-
-  // Ahora, enviamos los datos para generar la solicitud
-  try {
-    const responseGenerarSolicitud = await fetch('/generar-solicitud', {
-      method: 'POST',
-      body: formData
-    });
-
-    // Verificar si la solicitud fue exitosa
-    if (responseGenerarSolicitud.ok) {
-      swal('Solicitud enviada correctamente');
-    } else {
-      swal('Error al enviar la solicitud');
-    }
-  } catch (error) {
-    console.error('Error al enviar la solicitud:', error);
-    swal('Error de conexión');
-  } finally {
-    // Reactivar el botón de submit en caso de que falle la solicitud
-    submitButton.disabled = false;
-    submitButton.innerHTML = 'Enviar';
-    document.getElementById('formulario').reset(); // Limpiar el formulario
-  }
-});
 
 
     // Seleccionar todos los botones "Ver QR"
