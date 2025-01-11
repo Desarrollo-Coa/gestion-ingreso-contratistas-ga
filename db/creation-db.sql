@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS users (
     
 );
 
+
 -- Tabla de Solicitudes
 CREATE TABLE IF NOT EXISTS solicitudes (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -62,9 +63,10 @@ CREATE TABLE IF NOT EXISTS solicitudes (
 CREATE TABLE IF NOT EXISTS colaboradores (
     id INT AUTO_INCREMENT PRIMARY KEY,
     solicitud_id INT NOT NULL,  -- Referencia a la tabla solicitudes
-    cedula VARCHAR(20) NOT NULL,
+    cedula VARCHAR(20) NOT NULL, -- Numero de la cedula,
     nombre VARCHAR(255) NOT NULL,
-    foto VARCHAR(255),  -- Ruta a la foto del colaborador
+    foto VARCHAR(255),  -- Ruta a la fotografia de la cara del colaborador
+    cedulaFoto VARCHAR(255),  -- Ruta de la foto de la cedula del colaborador
     FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE
 );
 

@@ -1,57 +1,171 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const controller = require('../controllers/contratista.controller');
+const SFTPClient = require('ssh2-sftp-client'); // Importar la librería SFTP
 const router = express.Router();
+const controller = require('../controllers/contratista.controller');
+const jwt = require('jsonwebtoken');
+const SECRET_KEY = process.env.JWT_SECRET || 'secreto';
+const connection = require('../db/db'); // Database connection
+require('dotenv').config();  // Cargar variables de entorno desde el archivo .env
 
-// Multer storage configuration
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/'); // Directorio donde se guardarán los archivos
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname)); // Nombre único basado en la fecha
-    }
-});
 
-// Configuración de multer para permitir archivos grandes
-const upload = multer({ 
+// Configuración de almacenamiento de Multer en memoria
+const storage = multer.memoryStorage();
+
+const upload = multer({
     storage: storage,
     limits: { 
-        fileSize: 100 * 1024 * 1024 // Limitar el tamaño de los archivos a 100MB (ajusta este valor según lo que necesites)
+        fileSize: 100 * 1024 * 1024 // Limitar el tamaño de los archivos a 100MB
     }
 });
 
-// Route for contractor view
-router.get('/vista-contratista', (req, res) => {
-    console.log('[RUTA] Se accede a la vista del contratista');
-    controller.vistaContratista(req, res);
-});
+// Función para generar un nombre único para cada archivo
+function generateUniqueFilename(originalname) {
+    const timestamp = Date.now(); // Usamos la fecha actual como base para generar un nombre único
+    const extension = path.extname(originalname); // Obtenemos la extensión original del archivo
+    return `${timestamp}${extension}`; // Creamos un nombre único con la extensión original
+}
+
+// Función para subir archivos a SFTP desde el buffer (memoria)
+async function uploadToSFTP(buffer, remotePath) {
+    const sftp = new SFTPClient();
+    try {
+        await sftp.connect({
+            host: process.env.SFTP_HOST,         // Usamos la variable SFTP_HOST
+            port: process.env.SFTP_PORT,         // Usamos la variable SFTP_PORT
+            username: process.env.SFTP_USERNAME, // Usamos la variable SFTP_USERNAME
+            password: process.env.SFTP_PASSWORD  // Usamos la variable SFTP_PASSWORD
+        });
+
+        // Subir el archivo usando el buffer en memoria
+        await sftp.put(buffer, remotePath);
+        console.log('Archivo subido exitosamente:', remotePath);
+    } catch (err) {
+        console.error('Error al subir archivo:', err);
+    } finally {
+        await sftp.end();
+    }
+}
 
 router.post('/generar-solicitud', upload.fields([
     { name: 'arl', maxCount: 1 },
     { name: 'pasocial', maxCount: 1 },
-    { name: 'foto[]', maxCount: 25 }, // Aceptar hasta 25 fotos
-    { name: 'cedulaFoto[]', maxCount: 25 } // Aceptar hasta 25 cédulas
-]), (err, req, res, next) => {
+    { name: 'foto[]', maxCount: 25 },
+    { name: 'cedulaFoto[]', maxCount: 25 }
+]), async (err, req, res, next) => {
     if (err) {
         console.error('Error al subir los archivos:', err);
         return res.status(400).send('Error al subir los archivos');
     }
     next();
-}, (req, res) => {
-    console.log('Body:', req.body);  // Muestra los campos del formulario
-    console.log('Files:', req.files); // Muestra los archivos enviados
-    controller.crearSolicitud(req, res);  // Llama al controlador
+}, async (req, res) => {
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
+
+    // Procesar archivos y enviarlos al servidor remoto
+    const uploadedFiles = req.files;
+    const fileNames = {
+        foto: [],
+        cedulaFoto: [],
+        arl: null,
+        pasocial: null
+    };
+
+    for (const fileKey in uploadedFiles) {
+        const files = uploadedFiles[fileKey];
+        for (const file of files) {
+            // Generar un nombre único para cada archivo
+            const uniqueFilename = generateUniqueFilename(file.originalname);
+
+            // Ruta remota en el servidor SFTP
+            const remoteFilePath = `/home/administrator/gestion-ingreso-contratistas-ga/uploads/${uniqueFilename}`;
+
+            // Subir el archivo a SFTP con el nombre único
+            await uploadToSFTP(file.buffer, remoteFilePath);
+
+            // Guardar los nombres de los archivos para ser utilizados en la base de datos
+            if (fileKey === 'foto[]') {
+                fileNames.foto.push(uniqueFilename);
+            } else if (fileKey === 'cedulaFoto[]') {
+                fileNames.cedulaFoto.push(uniqueFilename);
+            } else if (fileKey === 'arl') {
+                fileNames.arl = uniqueFilename;  // Guardar solo el nombre del archivo ARL
+            } else if (fileKey === 'pasocial') {
+                fileNames.pasocial = uniqueFilename;  // Guardar solo el nombre del archivo pasocial
+            }
+        }
+    }
+
+    // Aquí aseguramos que los datos del formulario estén completos
+    const { empresa, nit, lugar, labor, cedula, nombre, inicio_obra, fin_obra, dias_trabajo } = req.body;
+
+    // Lógica para crear la solicitud en la base de datos
+    const token = req.cookies.token;
+    if (!token) {
+        console.log('[CONTROLADOR] No se encontró el token, redirigiendo a login');
+        return res.status(401).send('No se encontró el token');
+    }
+
+    try {
+        // Decodificar el token
+        const decoded = jwt.verify(token, SECRET_KEY);
+        const { id } = decoded;
+
+        if (!id) {
+            console.log('[CONTROLADOR] El token no contiene un id válido');
+            return res.status(400).send('Token inválido');
+        }
+
+        console.log('[CONTROLADOR] Usuario ID:', id);
+
+        // Crear la solicitud en la base de datos, incluyendo solo los nombres de los archivos ARL y pasocial
+        const query = `
+            INSERT INTO solicitudes (usuario_id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor, arl_documento, pasocial_documento)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        `;
+        const [result] = await connection.execute(query, [
+            id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor, 
+            fileNames.arl || null, // Solo el nombre del archivo ARL
+            fileNames.pasocial || null // Solo el nombre del archivo pasocial
+        ]);
+
+        console.log('[CONTROLADOR] Solicitud creada con éxito', result);
+
+        // Aquí asociamos los colaboradores con la solicitud
+        for (let i = 0; i < cedula.length; i++) {
+            const cedulaColab = cedula[i];
+            const nombreColab = nombre[i];
+            const fotoColab = fileNames.foto[i] || null;
+            const cedulaFotoColab = fileNames.cedulaFoto[i] || null;
+
+            const queryColaborador = `
+                INSERT INTO colaboradores (solicitud_id, cedula, nombre, foto, cedulaFoto)
+                VALUES (?, ?, ?, ?, ?);
+            `;
+
+            await connection.execute(queryColaborador, [
+                result.insertId, cedulaColab, nombreColab, fotoColab, cedulaFotoColab
+            ]);
+        }
+
+        res.status(200).send('Solicitud creada correctamente');
+    } catch (error) {
+        console.error('[CONTROLADOR] Error al crear la solicitud:', error);
+        res.status(500).send('Error al crear la solicitud');
+    }
 });
 
 
+// Resto de las rutas
+router.get('/vista-contratista', (req, res) => {
+    console.log('[RUTA] Se accede a la vista del contratista');
+    controller.vistaContratista(req, res);
+});
 
-
-// Ruta para detener la labor de una solicitud
 router.put('/solicitudes/:solicitudId/detener-labor', (req, res) => {
     console.log('[RUTA] Detener labor para la solicitud con ID:', req.params.solicitudId);
-    controller.detenerLabor(req, res);  // Llama al controlador para detener la labor
+    controller.detenerLabor(req, res);
 });
 
 module.exports = router;

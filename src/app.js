@@ -6,28 +6,11 @@ const { Console } = require('console');
 const app = express();
 
 // Configuración de CORS para permitir todas las solicitudes de cualquier origen
-
 app.use(cors({
     origin: '*',  // Permite todas las solicitudes desde cualquier origen
     methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Permite los métodos comunes
     allowedHeaders: ['Content-Type', 'Authorization']  // Permite los encabezados más comunes
 }));
-
-
-
-// app.use(cors({
-//     origin: function(origin, callback) {
-//         // Permitir solicitudes de https://gestion-ingreso-contratistas-ga.vercel.app y 83.147.38.41
-//         if (origin === 'https://gestion-ingreso-contratistas-ga.vercel.app' || origin === 'http://83.147.38.41' || !origin) {
-//             callback(null, true);
-//         } else {
-//             callback(new Error('Not allowed by CORS'));
-//         }
-//     },
-//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//     allowedHeaders: ['Content-Type', 'Authorization']
-// }));
-
 
 // Middleware para parsear JSON y datos de formularios
 app.use(express.json());

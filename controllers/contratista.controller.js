@@ -75,102 +75,64 @@ controller.vistaContratista = async (req, res) => {
       res.status(500).send('Error al procesar la solicitud');
   }
 };
-
 controller.crearSolicitud = async (req, res) => {
   try {
-    console.log('[CONTROLADOR] Se está procesando la solicitud de creación');
-    console.log('[CONTROLADOR] Request Body:', req.body);
-
-    const token = req.cookies.token;  // Recuperar el token desde la cookie
-    if (!token) {
-      console.log('[CONTROLADOR] No se encontró el token, redirigiendo a login');
-      return res.redirect('/login');
-    }
-
-    // Verificar el token y obtener el id del usuario
-    const decoded = jwt.verify(token, SECRET_KEY);
-    const { id: usuarioId } = decoded;  // Obtener el ID del usuario desde el token
-
-    // Obtener datos del formulario
-    const { empresa, nit, inicio_obra, fin_obra, dias_trabajo, estado, cedula, nombre, lugar, labor } = req.body;
-
-    // Crear un arreglo para almacenar los campos faltantes
-    const camposFaltantes = [];
-
-    // Validar que todos los campos necesarios estén presentes
-    if (!empresa) camposFaltantes.push('empresa');
-    if (!nit) camposFaltantes.push('nit');
-    if (!inicio_obra) camposFaltantes.push('inicio_obra');
-    if (!fin_obra) camposFaltantes.push('fin_obra');
-    if (!dias_trabajo) camposFaltantes.push('dias_trabajo');
-
-    // Comprobar si se enviaron los documentos ARL y Planilla de Pago
-    if (!req.body.arl || !req.body.pasocial) {
-      camposFaltantes.push('Documentos ARL o Planilla de Pago');
-    }
-
-    // Si hay campos faltantes, devolver un mensaje de error detallado
-    if (camposFaltantes.length > 0) {
-      console.error('[CONTROLADOR] Faltan campos requeridos:', camposFaltantes);
-      return res.status(400).json({
-        message: `Por favor, complete los siguientes campos requeridos: ${camposFaltantes.join(', ')}.`
-      });
-    }
-
-    // Si no se ha enviado un estado, asignamos 'pendiente' por defecto
-    const estadoFinal = estado || 'pendiente';
-
-    // Insertar la solicitud en la base de datos usando el ID del usuario
-    const query = 'INSERT INTO solicitudes (usuario_id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, arl_documento, pasocial_documento, cedula_foto, estado, lugar, labor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-    const values = [usuarioId, empresa, nit, inicio_obra, fin_obra, dias_trabajo, req.body.arl, req.body.pasocial, req.body.cedula_foto || '', estadoFinal, lugar, labor];
-
-    console.log('[CONTROLADOR] Insertando solicitud con los siguientes valores:', values);
-
-    const result = await connection.execute(query, values);
-    const solicitudId = result[0].insertId;
-
-    console.log('[CONTROLADOR] Solicitud creada con ID:', solicitudId);
-    
-    // Manejo de colaboradores (si se envían)
-    if (req.body['foto[]'] && req.body['cedulaFoto[]'] && req.body['foto[]'].length > 0 && req.body['cedulaFoto[]'].length > 0) {
-      const fotosColaboradores = req.body['foto[]'];  // Acceder a las fotos correctamente
-      const cedulaFotoColaboradores = req.body['cedulaFoto[]'];  // Acceder a las cédulas correctamente
-      const cedulaColaboradores = Array.isArray(cedula) ? cedula : [cedula];
-      const nombreColaboradores = Array.isArray(nombre) ? nombre : [nombre];
-
-      // Validar que el número de colaboradores coincida
-      if (fotosColaboradores.length !== cedulaColaboradores.length || fotosColaboradores.length !== nombreColaboradores.length) {
-        console.error('[CONTROLADOR] El número de fotos no coincide con el número de colaboradores');
-        return res.status(400).json({ message: 'El número de fotos no coincide con el número de colaboradores.' });
+      // Verifica el token
+      const token = req.cookies.token;
+      if (!token) {
+          console.log('[CONTROLADOR] No se encontró el token, redirigiendo a login');
+          return res.status(401).send('No se encontró el token');
       }
 
-      let insertPromises = [];
-      for (let i = 0; i < fotosColaboradores.length; i++) {
-        const cedulaColaborador = cedulaColaboradores[i];
-        const nombreColaborador = nombreColaboradores[i];
-        const fotoColaborador = fotosColaboradores[i];
-        const cedulaFotoColaborador = cedulaFotoColaboradores[i];
+      // Decodifica el token para obtener el id
+      const decoded = jwt.verify(token, SECRET_KEY);
+      const { role, id } = decoded;  // 'id' es el ID del usuario
 
-        const queryColaboradores = 'INSERT INTO colaboradores (solicitud_id, cedula, nombre, foto, urlCedula) VALUES (?, ?, ?, ?, ?)';
-        const valuesColaboradores = [solicitudId, cedulaColaborador, nombreColaborador, fotoColaborador, cedulaFotoColaborador];
-
-        console.log('[CONTROLADOR] Insertando colaborador con los siguientes valores:', valuesColaboradores);
-        insertPromises.push(connection.execute(queryColaboradores, valuesColaboradores));
+      if (!id) {
+          console.log('[CONTROLADOR] El token no contiene un id válido');
+          return res.status(400).send('Token inválido');
       }
 
-      // Esperar que todas las inserciones de colaboradores se completen
-      await Promise.all(insertPromises);
-      console.log('[CONTROLADOR] Colaboradores insertados con éxito');
-      res.status(201).json({ message: 'Solicitud y colaboradores creados con éxito' });
-    } else {
-      res.status(201).json({ message: 'Solicitud creada con éxito, pero sin colaboradores' });
-    }
-    
-  } catch (err) {
-    console.error('[CONTROLADOR] Error inesperado:', err);
-    res.status(500).json({ message: 'Error interno del servidor', error: err });
+      console.log('[CONTROLADOR] Usuario ID:', id);
+
+      // Asegúrate de que los demás datos están presentes
+      const { empresa, nit, lugar, labor, cedula, nombre, inicio_obra, fin_obra, dias_trabajo } = req.body;
+
+      // Aquí va la lógica para crear la solicitud en la base de datos
+      const query = `
+          INSERT INTO solicitudes (usuario_id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+      `;
+      const [result] = await connection.execute(query, [
+          id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor
+      ]);
+
+      console.log('[CONTROLADOR] Solicitud creada con éxito', result);
+
+      // Aquí asociamos los colaboradores con la solicitud
+      for (let i = 0; i < cedula.length; i++) {
+          const cedulaColab = cedula[i];
+          const nombreColab = nombre[i];
+          const fotoColab = req.files['foto[]'] ? req.files['foto[]'][i].filename : null;
+          const cedulaFotoColab = req.files['cedulaFoto[]'] ? req.files['cedulaFoto[]'][i].filename : null;
+
+          const queryColaborador = `
+              INSERT INTO colaboradores (solicitud_id, cedula, nombre, foto, cedulaFoto)
+              VALUES (?, ?, ?, ?, ?);
+          `;
+
+          await connection.execute(queryColaborador, [
+              result.insertId, cedulaColab, nombreColab, fotoColab, cedulaFotoColab
+          ]);
+      }
+
+      res.status(200).send('Solicitud creada correctamente');
+  } catch (error) {
+      console.error('[CONTROLADOR] Error al crear la solicitud:', error);
+      res.status(500).send('Error al crear la solicitud');
   }
 };
+
 
 
 // Controller for viewing the contractor's requests

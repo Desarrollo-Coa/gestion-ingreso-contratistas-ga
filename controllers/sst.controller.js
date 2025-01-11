@@ -5,7 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 const { format } = require('date-fns');  // Importamos la función 'format' de date-fns
-   
+const SFTPClient = require('ssh2-sftp-client'); // Para manejar la conexión SFTP si es necesario
+const fsExtra = require('fs-extra');
+require('dotenv').config();  // Cargar variables de entorno desde el archivo .env
+
 
 
 const controller = {};
@@ -161,13 +164,121 @@ controller.negarSolicitud = async (req, res) => {
 };
 
  
-// Descargar los documentos de la solicitud
+// // Descargar los documentos de la solicitud
+// controller.descargarSolicitud = async (req, res) => {
+//   const { id } = req.params;
+//   try {
+//     console.log('[RUTAS] Descargando documentos de la solicitud con ID:', id);
+
+//     // Obtener la solicitud con sus documentos
+//     const query = 'SELECT * FROM solicitudes WHERE id = ?';
+//     const [solicitud] = await connection.execute(query, [id]);
+
+//     console.log("Resultado de solicitudes: ", solicitud)
+
+//     if (!solicitud || solicitud.length === 0) {
+//       return res.status(404).send('Solicitud no encontrada');
+//     }
+
+//     const documents = [
+//       { path: solicitud[0].arl_documento, name: 'ARL DOCUMENTO' },
+//       { path: solicitud[0].pasocial_documento, name: 'PAGO SEGURIDAD SOCIAL PLANILLA' }
+//     ];
+
+//     // Verificar que las rutas de los documentos sean válidas
+//     if (!documents.every(doc => typeof doc.path === 'string' && doc.path.trim() !== '')) {
+//       return res.status(400).send('Documentos no válidos o no encontrados');
+//     }
+
+//     // Obtener las fotos de los colaboradores y las URLs de las cédulas
+//     const queryColaboradores = 'SELECT cedula, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?';
+//     const [colaboradores] = await connection.execute(queryColaboradores, [id]);
+
+//     // Agregar las fotos de los colaboradores y las URLs de las cédulas a la lista de documentos
+//     colaboradores.forEach(colaborador => {
+//       if (colaborador.foto) {
+//         const ext = path.extname(colaborador.foto); // Obtener la extensión del archivo
+//         documents.push({ path: colaborador.foto, name: `trabajador_${colaborador.cedula}${ext}` }); // Mantener la extensión
+//       }
+//       if (colaborador.cedulaFoto) {
+//         const ext = path.extname(colaborador.cedulaFoto); // Obtener la extensión del archivo
+//         documents.push({ path: colaborador.cedulaFoto, name: `doc_trabajador_${colaborador.cedula}${ext}` }); // Mantener la extensión
+//       }
+//     });
+
+//     // Crear el archivo ZIP
+//     const zipPath = path.join(__dirname, '..', 'uploads', 'solicitud_' + id + '.zip');
+//     const output = fs.createWriteStream(zipPath);
+//     const archive = archiver('zip', { zlib: { level: 9 } });
+
+//     archive.pipe(output);
+
+//     // Añadir los documentos al archivo ZIP
+//     documents.forEach(document => {
+//       const filePath = path.join(__dirname, '../uploads', document.path);
+//       if (fs.existsSync(filePath)) {
+//         archive.file(filePath, { name: `${document.name}${path.extname(document.path)}` }); // Usar el nombre especificado y mantener la extensión
+//       } else {
+//         console.error(`Documento no encontrado: ${filePath}`);
+//       }
+//     });
+
+//     // Finalizar el archivo ZIP
+//     archive.finalize();
+
+//     // Cuando el archivo ZIP se ha creado, lo enviamos al usuario
+//     output.on('close', () => {
+//       res.download(zipPath, (err) => {
+//         if (err) {
+//           console.error('Error al descargar el archivo:', err);
+//         }
+//         fs.unlinkSync(zipPath);  // Eliminar el archivo ZIP después de la descarga
+//       });
+//     });
+
+//   } catch (error) {
+//     console.error('Error al generar el archivo ZIP:', error);
+//     res.status(500).send('Error al generar el archivo ZIP');
+//   }
+// };
+
+
+// Función para conectar con el servidor SFTP y obtener un archivo
+
+
+async function downloadFromSFTP(remotePath, localPath) {
+  const sftp = new SFTPClient();
+  try {
+    await sftp.connect({
+      host: process.env.SFTP_HOST,
+      port: process.env.SFTP_PORT,
+      username: process.env.SFTP_USERNAME,
+      password: process.env.SFTP_PASSWORD
+    });
+
+    // Intentar descargar el archivo
+    await sftp.get(remotePath, localPath);
+    console.log('Archivo descargado exitosamente:', remotePath);
+    return true;  // Indicamos que el archivo fue descargado correctamente
+  } catch (err) {
+    if (err.code === 2) {  // Error "No such file"
+      console.log(`Archivo no encontrado: ${remotePath}`);
+    } else {
+      console.error('Error al descargar archivo:', err);
+    }
+    return false;  // Indicamos que hubo un error
+  } finally {
+    await sftp.end();
+  }
+}
+
 controller.descargarSolicitud = async (req, res) => {
   const { id } = req.params;
-  try {
-    console.log('[RUTAS] Descargando documentos de la solicitud con ID:', id);
 
-    // Obtener la solicitud con sus documentos
+  try {
+    console.log('[RUTA] Descargando documentos de la solicitud con ID:', id);
+
+    // Obtener la solicitud de la base de datos
     const query = 'SELECT * FROM solicitudes WHERE id = ?';
     const [solicitud] = await connection.execute(query, [id]);
 
@@ -175,64 +286,88 @@ controller.descargarSolicitud = async (req, res) => {
       return res.status(404).send('Solicitud no encontrada');
     }
 
-    const documents = [
-      { path: solicitud[0].arl_documento, name: 'ARL DOCUMENTO' },
-      { path: solicitud[0].pasocial_documento, name: 'PAGO SEGURIDAD SOCIAL PLANILLA' }
-    ];
+    // Recuperar los documentos ARL y Seguridad Social
+    const arlDocument = solicitud[0].arl_documento;
+    const pasocialDocument = solicitud[0].pasocial_documento;
 
-    // Verificar que las rutas de los documentos sean válidas
-    if (!documents.every(doc => typeof doc.path === 'string' && doc.path.trim() !== '')) {
-      return res.status(400).send('Documentos no válidos o no encontrados');
+    if (!arlDocument || !pasocialDocument) {
+      return res.status(400).send('Faltan documentos necesarios (ARL o Seguridad Social)');
     }
 
-    // Obtener las fotos de los colaboradores y las URLs de las cédulas
-    const queryColaboradores = 'SELECT cedula, foto, urlCedula FROM colaboradores WHERE solicitud_id = ?';
+    // Inicializar la lista de documentos a incluir en el ZIP
+    const documents = [
+      { remotePath: `/home/administrator/gestion-ingreso-contratistas-ga/uploads/${arlDocument}`, name: `ARL_${id}${path.extname(arlDocument)}` },
+      { remotePath: `/home/administrator/gestion-ingreso-contratistas-ga/uploads/${pasocialDocument}`, name: `Pasocial_${id}${path.extname(pasocialDocument)}` }
+    ];
+
+    // Obtener los colaboradores y sus fotos
+    const queryColaboradores = 'SELECT cedula, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?';
     const [colaboradores] = await connection.execute(queryColaboradores, [id]);
 
-    // Agregar las fotos de los colaboradores y las URLs de las cédulas a la lista de documentos
     colaboradores.forEach(colaborador => {
       if (colaborador.foto) {
-        const ext = path.extname(colaborador.foto); // Obtener la extensión del archivo
-        documents.push({ path: colaborador.foto, name: `trabajador_${colaborador.cedula}${ext}` }); // Mantener la extensión
+        const ext = path.extname(colaborador.foto);
+        documents.push({ 
+          remotePath: `/home/administrator/gestion-ingreso-contratistas-ga/uploads/${colaborador.foto}`, 
+          name: `FOTOCC_${colaborador.cedula}${ext}` 
+        });
       }
-      if (colaborador.urlCedula) {
-        const ext = path.extname(colaborador.urlCedula); // Obtener la extensión del archivo
-        documents.push({ path: colaborador.urlCedula, name: `doc_trabajador_${colaborador.cedula}${ext}` }); // Mantener la extensión
+      if (colaborador.cedulaFoto) {
+        const ext = path.extname(colaborador.cedulaFoto);
+        documents.push({ 
+          remotePath: `/home/administrator/gestion-ingreso-contratistas-ga/uploads/${colaborador.cedulaFoto}`, 
+          name: `FOTOCB_${colaborador.cedula}${ext}` 
+        });
       }
     });
 
-    // Crear el archivo ZIP
-    const zipPath = path.join(__dirname, '..', 'uploads', 'solicitud_' + id + '.zip');
+    let downloadedCount = 0;
+    const zip = archiver('zip', { zlib: { level: 9 } });
+    const zipPath = path.join(__dirname, '..', 'uploads', `solicitud_${id}.zip`);
     const output = fs.createWriteStream(zipPath);
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    
+    zip.pipe(output);
 
-    archive.pipe(output);
-
-    // Añadir los documentos al archivo ZIP
-    documents.forEach(document => {
-      const filePath = path.join(__dirname, '..', document.path);
-      if (fs.existsSync(filePath)) {
-        archive.file(filePath, { name: `${document.name}${path.extname(document.path)}` }); // Usar el nombre especificado y mantener la extensión
-      } else {
-        console.error(`Documento no encontrado: ${filePath}`);
+    // Descargar cada archivo del servidor SFTP y añadirlo al archivo ZIP
+    for (let document of documents) {
+      const localPath = path.join(__dirname, '..', 'uploads', document.name);
+      const downloaded = await downloadFromSFTP(document.remotePath, localPath);
+      if (downloaded) {
+        zip.file(localPath, { name: document.name });
+        downloadedCount++;
       }
-    });
+    }
 
     // Finalizar el archivo ZIP
-    archive.finalize();
+    zip.finalize();
 
-    // Cuando el archivo ZIP se ha creado, lo enviamos al usuario
     output.on('close', () => {
-      res.download(zipPath, (err) => {
-        if (err) {
-          console.error('Error al descargar el archivo:', err);
+      console.log('[RUTA] Archivo ZIP creado, enviando al cliente...');
+
+      if (downloadedCount > 0) {
+        res.download(zipPath, (err) => {
+          if (err) {
+            console.error('Error al descargar el archivo ZIP:', err);
+          }
+           // Eliminar archivos temporales después de la descarga
+      documents.forEach(document => {
+        const localPath = path.join(__dirname, '..', 'uploads', document.name);
+        if (fs.existsSync(localPath)) {  // Verificar si el archivo existe antes de eliminarlo
+          fs.unlinkSync(localPath);
         }
-        fs.unlinkSync(zipPath);  // Eliminar el archivo ZIP después de la descarga
       });
+      if (fs.existsSync(zipPath)) {  // Asegurarse de que el ZIP también sea eliminado
+        fs.unlinkSync(zipPath);
+      }
+      console.log('[RUTA] Archivos temporales eliminados.');
     });
+  } else {
+    res.status(404).send('No se encontraron archivos para descargar.');
+  }
+});
 
   } catch (error) {
-    console.error('Error al generar el archivo ZIP:', error);
+    console.error('[RUTA] Error al generar el archivo ZIP:', error);
     res.status(500).send('Error al generar el archivo ZIP');
   }
 };

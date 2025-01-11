@@ -6,8 +6,8 @@ const controller = {};
 controller.registerForm = async (req, res) => {
     try {
         // Consultar los roles desde la base de datos con promesas
-        const [roles] = await connection.query('SELECT id, role_name FROM roles where role_name = "contratista" ');
-        // const [roles] = await connection.query('SELECT id, role_name FROM roles');
+        // const [roles] = await connection.query('SELECT id, role_name FROM roles where role_name = "contratista" ');
+        const [roles] = await connection.query('SELECT id, role_name FROM roles');
         console.log('Roles obtenidos:', roles); // Verifica si los roles se obtienen correctamente
 
         // Verificar que el objeto roles esté bien definido antes de renderizar
