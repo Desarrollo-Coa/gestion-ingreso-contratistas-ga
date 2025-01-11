@@ -323,14 +323,16 @@ controller.descargarSolicitud = async (req, res) => {
 
     let downloadedCount = 0;
     const zip = archiver('zip', { zlib: { level: 9 } });
-    const zipPath = path.join(__dirname, '..', 'uploads', `solicitud_${id}.zip`);
+    // const zipPath = path.join(__dirname, '..', 'uploads', `solicitud_${id}.zip`);
+    const zipPath = path.join('/tmp', `solicitud_${id}.zip`); // Cambia la ruta para usar /tmp
     const output = fs.createWriteStream(zipPath);
     
     zip.pipe(output);
 
     // Descargar cada archivo del servidor SFTP y añadirlo al archivo ZIP
     for (let document of documents) {
-      const localPath = path.join(__dirname, '..', 'uploads', document.name);
+      // const localPath = path.join(__dirname, '..', 'uploads', document.name);
+      const localPath = path.join('/tmp', document.name); // Guardar en /tmp para AWS Lambda o en un directorio temporal
       const downloaded = await downloadFromSFTP(document.remotePath, localPath);
       if (downloaded) {
         zip.file(localPath, { name: document.name });
