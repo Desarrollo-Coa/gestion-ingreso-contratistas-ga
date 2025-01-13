@@ -44,7 +44,7 @@ controller.vistaSeguridad = async (req, res) => {
     }
 };
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:8800';
+const BASE_URL = process.env.BASE_URL || 'http://localhost';
 
 controller.getSolicitudDetalles = async (req, res) => {
     
@@ -116,18 +116,24 @@ controller.qrAccesosModal = async (req, res) => {
 
         // Primera consulta: Obtener todas las solicitudes y calcular estados
         const [solicitud] = await connection.execute(`
-            SELECT id, empresa, nit, estado,
+           SELECT id, empresa, nit, estado,
                 DATE_FORMAT(inicio_obra, '%d/%m/%Y') AS inicio_obra,
                 DATE_FORMAT(fin_obra, '%d/%m/%Y') AS fin_obra,
                 CASE
+                    -- Si está aprobada y la fecha de fin ya pasó
                     WHEN estado = 'aprobada' AND CURDATE() > DATE(fin_obra) THEN 'pendiente ingreso - vencido'
+                    -- Si está aprobada y aún no ha vencido
                     WHEN estado = 'aprobada' THEN 'pendiente ingreso'
+                    -- Si está en labor y vencida
                     WHEN estado = 'en labor' AND CURDATE() > DATE(fin_obra) THEN 'en labor - vencida'
+                    -- Si está en labor
                     WHEN estado = 'en labor' THEN 'en labor'
+                    -- Si está detenida
                     WHEN estado = 'labor detenida' THEN 'labor detenida'
                     ELSE estado
                 END AS estado_actual
             FROM solicitudes
+            WHERE estado IN ('aprobada', 'en labor', 'labor detenida' )
             ORDER BY id DESC
         `);
 

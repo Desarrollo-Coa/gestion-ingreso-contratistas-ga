@@ -57,7 +57,7 @@ router.put('/api/solicitudes/:id/registrar-ingreso', async (req, res) => {
 
 
 
-  router.get('/qraccesosmodal/:id', controller.qrAccesosModal);
+  router.get('/vista-seguridad/:id', controller.qrAccesosModal);
 
 
 

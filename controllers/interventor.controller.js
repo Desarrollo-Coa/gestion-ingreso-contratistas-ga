@@ -173,7 +173,7 @@ controller.generarQR = async (req, res) => {
     }
 
     // Generamos el código QR con el formato de URL solicitado
-    const qrData = `gestion-ingreso-contratistas-ga.vercel.app/qraccesosmodal/${solicitudId}`;
+    const qrData = `gestion-ingreso-contratistas-ga.vercel.app/vista-seguridad/${solicitudId}`;
     const qrImage = await QRCode.toDataURL(qrData);
 
     console.log('[DEBUG] QR generado exitosamente.');
