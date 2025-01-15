@@ -222,10 +222,6 @@ router.get('/vista-contratista', (req, res) => {
     console.log('[RUTA] Se accede a la vista del contratista');
     controller.vistaContratista(req, res);
 });
-
-router.put('/solicitudes/:solicitudId/detener-labor', (req, res) => {
-    console.log('[RUTA] Detener labor para la solicitud con ID:', req.params.solicitudId);
-    controller.detenerLabor(req, res);
-});
+ 
 
 module.exports = router;
