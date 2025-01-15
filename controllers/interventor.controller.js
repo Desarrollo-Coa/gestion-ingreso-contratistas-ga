@@ -5,7 +5,7 @@ const { format } = require('date-fns');  // Importamos la función 'format' de d
 const QRCode = require('qrcode');
 
 const controller = {}; 
-
+ 
 controller.vistaInterventor = async (req, res) => {
   const token = req.cookies.token;
 
@@ -31,50 +31,49 @@ controller.vistaInterventor = async (req, res) => {
 
     // Obtener las acciones y solicitudes procesadas desde la base de datos
     const [acciones] = await connection.execute(`
-SELECT 
-    a.id AS accion_id,
-    a.solicitud_id,
-    a.accion,
-    a.comentario,
-    DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
-    DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
-    s.estado AS solicitud_estado,
-    s.lugar,
-    s.labor,
-    s.empresa,
-    s.nit,       
-    -- Determinar si la solicitud está vencida o no
-    CASE
-        -- La solicitud está vencida si la fecha de fin de obra es anterior al día de hoy
-        WHEN DATE(s.fin_obra) < CURDATE() THEN 'Vencida'
-        -- Si la solicitud tiene el estado 'labor detenida'
-        WHEN s.estado = 'labor detenida' THEN 'Labor detenida'
-        -- Si la solicitud está en proceso de trabajo
-        WHEN s.estado = 'en labor' THEN 'En labor'
-        -- Si ninguna de las condiciones anteriores, está vigente
-        ELSE 'Vigente'
-    END AS estado_vigencia,
+      SELECT 
+        a.id AS accion_id,
+        a.solicitud_id,
+        a.accion,
+        a.comentario,
+        DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
+        DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
+        s.estado AS solicitud_estado,
+        s.lugar,
+        s.labor,
+        s.empresa,
+        s.nit,
 
-    -- Lógica para el botón de "Aprobar"
-    CASE
-        WHEN a.accion = 'pendiente' AND s.estado IN ('aprobada') THEN 'Aprobar'
-        ELSE 'No disponible'
-    END AS puede_aprobar,
+        -- Determinar si la solicitud está vencida o no
+        CASE
+          WHEN DATE(s.fin_obra) < CURDATE() THEN 'Vencida'
+          ELSE 'Vigente'
+        END AS estado_vigencia,
 
-    -- Lógica para el botón de "Ver QR"
-    CASE
-        WHEN a.accion = 'aprobada' AND s.estado IN ('aprobada', 'en labor') 
-             AND DATE(s.fin_obra) >= CURDATE() THEN 'Ver QR'
-        ELSE 'No disponible'
-    END AS puede_ver_qr
+        -- Lógica para el botón de "Aprobar"
+        CASE
+          WHEN a.accion = 'pendiente' AND s.estado = 'aprobada' THEN 'Aprobar'
+          ELSE 'No disponible'
+        END AS puede_aprobar,
 
-FROM acciones a
-JOIN solicitudes s ON a.solicitud_id = s.id
-WHERE 
-    (a.accion IN ('aprobada', 'pendiente') OR s.estado IN ('en labor', 'labor detenida'))
-ORDER BY a.id DESC;
+        -- Lógica para el botón de "Detener Labor"
+        CASE
+          WHEN a.accion = 'aprobada' AND s.estado = 'en labor' THEN 'Detener Labor'
+          ELSE 'No disponible'
+        END AS puede_detener,
 
+        -- Lógica para el botón de "Ver QR"
+        CASE
+          WHEN a.accion = 'aprobada' AND s.estado IN ('aprobada', 'en labor') 
+               AND DATE(s.fin_obra) >= CURDATE() THEN 'Ver QR'
+          ELSE 'No disponible'
+        END AS puede_ver_qr
 
+      FROM acciones a
+      JOIN solicitudes s ON a.solicitud_id = s.id
+      WHERE 
+        (a.accion IN ('aprobada', 'pendiente') OR s.estado IN ('en labor', 'labor detenida'))
+      ORDER BY a.id DESC;
     `);
 
     console.log('[DEBUG] Acciones obtenidas de la base de datos:');  // Depuración: Ver las acciones obtenidas
@@ -90,6 +89,7 @@ ORDER BY a.id DESC;
     res.redirect('/login');
   }
 };
+
 
 
 controller.aprobarSolicitud = async (req, res) => {
@@ -186,5 +186,62 @@ controller.generarQR = async (req, res) => {
 
 
 
+ // Endpoint para detener la labor de una solicitud
+ controller.detenerLabor = async (req, res) => {
+  const { solicitudId } = req.params;
+
+  console.log("Validando id de solicitud a detener", solicitudId);
+
+  const query = `UPDATE solicitudes 
+                 SET estado = 'labor detenida' 
+                 WHERE id = ? AND estado = 'en labor'`;
+
+  try {
+    // Usamos await para esperar que la consulta a la base de datos se complete
+    const [result] = await connection.execute(query, [solicitudId]);
+
+    if (result.affectedRows > 0) {
+      // Se actualizó correctamente el estado
+      res.status(200).json({ message: 'Labor detenida correctamente' });
+    } else {
+      // Si no se encontró la solicitud o ya estaba detenida
+      res.status(400).json({ message: 'La solicitud no está en estado de "en labor" o ya fue detenida.' });
+    }
+  } catch (err) {
+    // En caso de error en la consulta
+    console.error('[CONTROLADOR] Error al detener la labor:', err);
+    res.status(500).json({ message: 'Error al intentar detener la labor' });
+  }
+};
+
+
+
+// Endpoint para reanudar la labor de una solicitud
+controller.reanudarLabor = async (req, res) => {
+  const { solicitudId } = req.params;
+
+  console.log("Validando id de solicitud para reanudar", solicitudId);
+
+  const query = `UPDATE solicitudes 
+                 SET estado = 'en labor' 
+                 WHERE id = ? AND estado = 'labor detenida'`;
+
+  try {
+    // Usamos await para esperar que la consulta a la base de datos se complete
+    const [result] = await connection.execute(query, [solicitudId]);
+
+    if (result.affectedRows > 0) {
+      // Se actualizó correctamente el estado
+      res.status(200).json({ message: 'Labor reanudada correctamente' });
+    } else {
+      // Si no se encontró la solicitud o ya estaba en estado "en labor"
+      res.status(400).json({ message: 'La solicitud no está en estado de "labor detenida" o ya está en labor.' });
+    }
+  } catch (err) {
+    // En caso de error en la consulta
+    console.error('[CONTROLADOR] Error al reanudar la labor:', err);
+    res.status(500).json({ message: 'Error al intentar reanudar la labor' });
+  }
+};
 
 module.exports = controller;
