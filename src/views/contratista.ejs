@@ -134,7 +134,7 @@
       </form>
     </div>
 
-
+<!-- 
     <div class="flex-1 bg-gray-50 p-6 overflow-auto" id="personasListado">
       <div class="text-lg font-semibold mb-6">Solicitudes Realizadas</div>
       <div class="list-group space-y-4">
@@ -183,9 +183,41 @@
           </div>
           <% }); %>
       </div>
+    </div> -->
+
+    <div class="flex-1 bg-gray-50 p-6 overflow-auto" id="personasListado">
+      <div class="text-lg font-semibold mb-6">Solicitudes Realizadas</div>
+      <div class="list-group space-y-4">
+        <% solicitudes.forEach(solicitud => { %>
+          <div class="list-group-item p-4 bg-white rounded-md shadow-md">
+            <p>Empresa: <%= solicitud.empresa %></p>
+            <p>ID: <%= solicitud.id %></p>
+            <p>Inicio de Obra: <%= solicitud.inicio_obra %></p>
+            <p>Fin de Obra: <%= solicitud.fin_obra %></p>
+            <p>NIT: <%= solicitud.nit %></p>
+            <p>Lugar: <%= solicitud.lugar %></p>
+            <p>Labor: <%= solicitud.labor %></p>
+            <p>Estado:
+              <% if (solicitud.estado_actual === 'aprobado por sst') { %>
+                <span class="estado text-yellow-500 font-semibold">Aprobado por SST</span>
+              <% } else if (solicitud.estado_actual === 'pendiente ingreso') { %>
+                <span class="estado text-yellow-500 font-semibold">Pendiente Ingreso</span>
+                <button class="btn btn-info text-white bg-blue-600 hover:bg-blue-700 py-2 px-4 rounded-md text-xs" id="verQR-<%= solicitud.id %>">Ver QR</button>
+              <% } else if (solicitud.estado_actual === 'en labor') { %>
+                <span class="estado text-blue-500 font-semibold">En labor</span>
+                <button class="btn btn-info text-white bg-blue-600 hover:bg-blue-700 py-2 px-4 rounded-md text-xs" id="verQR-<%= solicitud.id %>">Ver QR</button>
+              <% } else if (solicitud.estado_actual === 'labor detenida') { %>
+                <span class="estado text-gray-500 font-semibold">Labor detenida</span>
+              <% } else { %>
+                <span class="estado text-green-500 font-semibold"><%= solicitud.estado_actual %></span>
+              <% } %>
+            </p>
+            <p>Comentario: <span class="text-muted text-sm"><%= solicitud.comentario %></span></p>
+          </div>
+        <% }); %>
+      </div>
     </div>
-
-
+    
 
 
   </div>
@@ -224,48 +256,6 @@
 
 
   <script>
-    // Función para detener la labor y actualizar el estado en la base de datos
-    async function detenerLabor(solicitudId, button) {
-      try {
-        // Deshabilitar el botón inmediatamente para prevenir múltiples clics
-        button.disabled = true;
-        button.innerHTML = 'Procesando...'; // Cambiar el texto para mostrar que está en proceso
-
-        // Hacer la solicitud PUT para detener la labor
-        const response = await fetch(`/solicitudes/${solicitudId}/detener-labor`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-
-        if (response.ok) {
-          // Recargar la página para reflejar el nuevo estado
-          document.location.reload();  // Recargamos la página para mostrar el cambio
-        } else {
-          // Si la respuesta es negativa, extraemos el mensaje de error y mostramos una alerta
-          const errorData = await response.json();
-          Swal.fire({
-            icon: 'error',
-            title: 'Error al detener la labor',
-            text: errorData.message || 'No se pudo detener la labor. Verifica que la solicitud esté en estado "en labor".',
-          });
-        }
-      } catch (err) {
-        // Si hay un error de red, mostramos una alerta genérica
-        Swal.fire({
-          icon: 'error',
-          title: 'Error de conexión',
-          text: 'Ocurrió un error al intentar detener la labor. Inténtalo nuevamente más tarde.',
-        });
-        console.error('Error al intentar detener la labor:', err);
-      } finally {
-        // Rehabilitar el botón después de procesar la solicitud
-        button.disabled = false;
-        button.innerHTML = 'Detener Labor';  // Restaurar el texto original
-      }
-    }
-
     // Función para agregar más campos de personas
     document.getElementById('add-person').addEventListener('click', function () {
       const personasContainer = document.getElementById('personas-container');
