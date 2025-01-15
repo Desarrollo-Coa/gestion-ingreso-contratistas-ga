@@ -7,9 +7,12 @@ const router = express.Router();
 const requiredFunctions = {
   'GET /vista-interventor': 'vistaInterventor',
   'POST /aprobar-solicitud-interventor': 'aprobarSolicitud',
-  'GET /generar-qr/:id': 'generarQR', 
+  'GET /generar-qr/:id': 'generarQR',
+  'PUT /solicitudes/:solicitudId/detener-labor': 'detenerLabor',
+  'PUT /solicitudes/:solicitudId/reanudar-labor': 'reanudarLabor',
 };
 
+// Verificar que las funciones están definidas en el controlador
 Object.entries(requiredFunctions).forEach(([route, funcName]) => {
   if (typeof controller[funcName] !== 'function') {
     throw new Error(`[ERROR] La función '${funcName}' requerida para la ruta '${route}' no está definida en el controlador.`);
