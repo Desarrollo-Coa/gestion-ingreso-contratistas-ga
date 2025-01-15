@@ -184,35 +184,6 @@ controller.obtenerSolicitudes = (req, res) => {
   });
 };
 
- // Endpoint para detener la labor de una solicitud
-controller.detenerLabor = async (req, res) => {
-  const { solicitudId } = req.params;
-
-  console.log("Validando id de solicitud a detener", solicitudId);
-
-  const query = `UPDATE solicitudes 
-                 SET estado = 'labor detenida' 
-                 WHERE id = ? AND estado = 'en labor'`;
-
-  try {
-    // Usamos await para esperar que la consulta a la base de datos se complete
-    const [result] = await connection.execute(query, [solicitudId]);
-
-    if (result.affectedRows > 0) {
-      // Se actualizó correctamente el estado
-      res.status(200).json({ message: 'Labor detenida correctamente' });
-    } else {
-      // Si no se encontró la solicitud o ya estaba detenida
-      res.status(400).json({ message: 'La solicitud no está en estado de "en labor" o ya fue detenida.' });
-    }
-  } catch (err) {
-    // En caso de error en la consulta
-    console.error('[CONTROLADOR] Error al detener la labor:', err);
-    res.status(500).json({ message: 'Error al intentar detener la labor' });
-  }
-};
-
-
 
 
 module.exports = controller;
