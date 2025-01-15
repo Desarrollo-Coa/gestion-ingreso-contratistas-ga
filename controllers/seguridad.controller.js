@@ -47,9 +47,6 @@ controller.vistaSeguridad = async (req, res) => {
 const BASE_URL = process.env.BASE_URL || 'http://localhost';
 
 controller.getSolicitudDetalles = async (req, res) => {
-    
-
-
     const { id } = req.params;
     try {
         const [solicitud] = await connection.execute(
@@ -139,21 +136,26 @@ controller.qrAccesosModal = async (req, res) => {
 
         // Segunda consulta: Detalles de una solicitud específica
         const [solicitudDetails] = await connection.execute(`
-            SELECT id, empresa, nit, estado, 
-                   DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra, 
-                   DATE_FORMAT(fin_obra, '%Y-%m-%d') AS fin_obra, 
-                   CASE 
-                       WHEN estado = 'aprobada' AND CURDATE() > DATE(fin_obra) THEN 'pendiente ingreso - vencido'
-                       WHEN estado = 'aprobada' THEN 'pendiente ingreso'
-                       WHEN estado = 'en labor' AND CURDATE() > DATE(fin_obra) THEN 'en labor - vencida'
-                       WHEN estado = 'en labor' THEN 'en labor'
-                       WHEN estado = 'labor detenida' THEN 'labor detenida'
-                       ELSE estado
-                   END AS estado_actual,
-                   lugar,
-                   labor
+               SELECT id, empresa, nit, estado,
+                DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra,
+                DATE_FORMAT(fin_obra, '%Y-%m-%d') AS fin_obra,
+                CASE
+                    -- Si está aprobada y la fecha de fin ya pasó
+                    WHEN estado = 'aprobada' AND CURDATE() > DATE(fin_obra) THEN 'pendiente ingreso - vencido'
+                    -- Si está aprobada y aún no ha vencido
+                    WHEN estado = 'aprobada' THEN 'pendiente ingreso'
+                    -- Si está en labor y vencida
+                    WHEN estado = 'en labor' AND CURDATE() > DATE(fin_obra) THEN 'en labor - vencida'
+                    -- Si está en labor
+                    WHEN estado = 'en labor' THEN 'en labor'
+                    -- Si está detenida
+                    WHEN estado = 'labor detenida' THEN 'labor detenida'
+                    ELSE estado
+                END AS estado_actual,
+                lugar,
+                labor
             FROM solicitudes
-            WHERE id = ?
+            WHERE id = ?  AND  estado IN ('aprobada', 'en labor', 'labor detenida' )
         `, [id]);
 
         // Verificar si la solicitud específica existe
