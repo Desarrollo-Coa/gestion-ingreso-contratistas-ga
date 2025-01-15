@@ -81,7 +81,7 @@
         <th>Labor</th>
         <th>Estado de la Solicitud</th>
         <th>Vigencia</th>
-        <th>Acción</th>
+        <th>Acción</th> <!-- Solo una columna para manejar todas las acciones -->
         <th>Ver QR</th>
       </tr>
     </thead>
@@ -98,20 +98,31 @@
             <td><%= accion.labor %></td>
             <td><%= accion.solicitud_estado %></td>
             <td><%= accion.estado_vigencia %></td>
+
+            <!-- Columna de Acción para Aprobar, Detener/Reanudar Labor o No disponible -->
             <td>
-              <% if (accion.puede_aprobar === 'Aprobar') { %>
+              <% if (accion.puede_aprobar === 'Aprobar' && accion.estado_vigencia !== 'Vencida') { %>
                 <button class="btn btn-success btn-sm" id="aprobarBtn-<%= accion.solicitud_id %>">Aprobar</button>
+              <% } else if (accion.solicitud_estado === 'en labor' || accion.solicitud_estado === 'aprobada') { %>
+                <button class="btn btn-danger text-white bg-red-600 hover:bg-red-700 py-2 px-4 rounded-md text-xs"
+                  onclick="manejarLabor(<%= accion.solicitud_id %>, this, 'detener')">Detener Labor</button>
+              <% } else if (accion.solicitud_estado === 'labor detenida') { %>
+                <button class="btn btn-success text-white bg-green-600 hover:bg-green-700 py-2 px-4 rounded-md text-xs"
+                  onclick="manejarLabor(<%= accion.solicitud_id %>, this, 'reanudar')">Reanudar Labor</button>
               <% } else { %>
                 <span class="badge bg-danger">No disponible</span>
               <% } %>
             </td>
+
+            <!-- Columna para Ver QR -->
             <td>
-              <% if (accion.puede_ver_qr === 'Ver QR') { %>
+              <% if (accion.puede_ver_qr === 'Ver QR' && accion.estado_vigencia !== 'Vencida') { %>
                 <button class="btn btn-info btn-sm" id="verQR-<%= accion.solicitud_id %>">Ver QR</button>
               <% } else { %>
                 <span class="badge bg-danger">No disponible</span>
               <% } %>
             </td>
+
           </tr>
         <% }); %>
       <% } else { %>
@@ -120,9 +131,10 @@
         </tr>
       <% } %>
     </tbody>
-    </table>
-    
-    </div>
+  </table>
+</div>
+
+
   </div>
 
   <!-- Modal para Ver QR -->
@@ -161,6 +173,62 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
   <script> 
+ async function manejarLabor(solicitudId, button, accion) {
+  try {
+    const mensajeConfirmacion = accion === 'detener' 
+      ? '¿Está seguro de que desea detener la labor?'
+      : '¿Está seguro de que desea reanudar la labor?';
+
+    const result = await Swal.fire({
+      title: 'Confirmar acción',
+      text: mensajeConfirmacion,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, continuar',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    button.disabled = true;
+    button.innerHTML = 'Procesando...';
+
+    const endpoint = accion === 'detener'
+      ? `/solicitudes/${solicitudId}/detener-labor`
+      : `/solicitudes/${solicitudId}/reanudar-labor`;
+
+    const response = await fetch(endpoint, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      document.location.reload();
+    } else {
+      const errorData = await response.json();
+      Swal.fire({
+        icon: 'error',
+        title: 'Error al procesar la solicitud',
+        text: errorData.message || 'No se pudo procesar la solicitud.',
+      });
+    }
+  } catch (err) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error de conexión',
+      text: 'Ocurrió un error al intentar procesar la solicitud.',
+    });
+    console.error('Error al intentar manejar la labor:', err);
+  } finally {
+    button.disabled = false;
+    button.innerHTML = accion === 'detener' ? 'Detener Labor' : 'Reanudar Labor';
+  }
+}
+
  
   document.addEventListener('DOMContentLoaded', function () {
   // Evento para aprobar solicitud
