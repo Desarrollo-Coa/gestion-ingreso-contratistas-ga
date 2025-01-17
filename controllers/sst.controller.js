@@ -34,7 +34,7 @@ controller.vistaSst = async (req, res) => {
     // Verificar el token
     console.log('Verificando la validez del token...');
     const decoded = jwt.verify(token, SECRET_KEY);
-    console.log('Token verificado con éxito. Datos decodificados:', decoded);
+    console.log('Token verificado con éxito. Datos decodificados:');
 
     const { role } = decoded;
 
@@ -49,7 +49,7 @@ controller.vistaSst = async (req, res) => {
 
     // Obtener las solicitudes pendientes de la base de datos
     console.log('Obteniendo solicitudes pendientes de la base de datos...');
-    const [solicitud] = await connection.execute('SELECT * FROM solicitudes ORDER BY id DESC');
+    const [solicitud] = await connection.execute('SELECT s.*, us.username AS interventor FROM solicitudes s LEFT JOIN users us ON us.id = s.interventor_id ORDER BY id DESC');
     
     if (!solicitud.length) {
       console.log('No hay solicitudes pendientes en la base de datos');

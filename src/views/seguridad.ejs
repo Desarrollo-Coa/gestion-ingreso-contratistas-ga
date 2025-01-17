@@ -7,6 +7,7 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"> 
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script> <!-- CDN de Tailwind CSS -->
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -25,8 +26,14 @@
 
 </head>
 <body>
+    
+<!-- Barra de navegación -->
+<nav class="flex justify-between items-center bg-gray-800 text-white p-4" id="nav">
+    <a class="text-lg font-semibold" href="#">Vista Seguridad GA</a>
+    <a class="text-lg" href="/logout">Cerrar sesión</a>
+  </nav>
+  
     <div class="container mt-5">
-        <h1 class="text-center mb-4">Seguridad</h1>
     
         <!-- Buscador y Botón Escanear QR -->
         <div class="mb-4 d-flex justify-content-between align-items-center">
@@ -46,6 +53,7 @@
                         <th>Empresa</th>
                         <th>NIT</th>
                         <th>Estado</th>
+                        <th>Interventor</th>
                         <th>Ver Detalles</th>
                     </tr>
                 </thead>
@@ -66,11 +74,14 @@
                                     <%= sol.estado_actual %>
                                 </span>
                             </td>
+                            <td><%= sol.interventor %></td>
+
                             <td>
                                 <button class="btn btn-info btn-sm" onclick="verDetalles(<%= sol.id %>)">
                                     <i class="bi bi-eye"></i> Ver Detalles
                                 </button>
                             </td>
+ 
                         </tr>
                     <% }); %> 
                 </tbody>
@@ -101,6 +112,7 @@
                         <p><strong>Inicio de Obra:</strong> <span id="detalleInicio"></span></p>
                         <p><strong>Fin de Obra:</strong> <span id="detalleFin"></span></p>
                         <p><strong>Estado:</strong> <span id="detalleEstado"></span></p>
+                        <p><strong>Interventor:</strong> <span id="detalleInterventor"></span></p>
                     </div>
                 </div>
 
@@ -132,6 +144,8 @@
         document.getElementById('detalleId').textContent = modalData.id || 'N/A';
         document.getElementById('detalleLugar').textContent = modalData.lugar || 'N/A';
         document.getElementById('detalleLabor').textContent = modalData.labor || 'N/A';
+        document.getElementById('detalleInterventor').textContent = modalData.interventor || 'N/A';
+
 
         // Formatear fechas
         const formatFecha = (fecha) => {
@@ -261,6 +275,7 @@ async function verDetalles(id) {
         document.getElementById('detalleEmpresa').textContent = data.empresa;
         document.getElementById('detalleLugar').textContent = data.lugar;
         document.getElementById('detalleLabor').textContent = data.labor;
+        document.getElementById('detalleInterventor').textContent = data.interventor;
         // Actualización de clases del estado dinámico
   
   

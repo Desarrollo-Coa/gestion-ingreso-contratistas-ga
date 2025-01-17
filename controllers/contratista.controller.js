@@ -40,6 +40,7 @@ controller.vistaContratista = async (req, res) => {
         a.comentario, 
         s.lugar, 
         s.labor,
+        us.username AS interventor,
         CASE
             WHEN s.estado = 'aprobada' AND a.accion = 'pendiente' THEN 'aprobado por sst'  -- Solicitud aprobada y acción pendiente
             WHEN s.estado = 'aprobada' AND a.accion = 'aprobada' THEN 'pendiente ingreso'  -- Solicitud y acción ambas aprobadas
@@ -51,9 +52,11 @@ controller.vistaContratista = async (req, res) => {
         END AS estado_actual
     FROM solicitudes s
     LEFT JOIN acciones a ON s.id = a.solicitud_id
+    LEFT JOIN users us ON us.id = s.interventor_id
     WHERE s.usuario_id = ?
     ORDER BY s.id DESC;
       `;
+
 
       const [solicitudes] = await connection.execute(query, [id]);
 
@@ -61,14 +64,22 @@ controller.vistaContratista = async (req, res) => {
 
       const [userDetails] = await connection.query('SELECT empresa, nit FROM users WHERE id = ?', [id]);
 
+      
+      const [Usersinterventores] = await connection.execute(` 
+        SELECT id, username FROM users WHERE role_id = (SELECT id FROM roles WHERE role_name = 'interventor')
+      `);
+
       const empresa = userDetails.length > 0 ? userDetails[0].empresa : '';
       const nit = userDetails.length > 0 ? userDetails[0].nit : '';
+      const interventores =  Usersinterventores.length > 0 ? Usersinterventores : '';
 
+        console.log('Prueba de usuarios Interventores: ' , interventores);
       res.render('contratista', {
           title: 'Contratista - Grupo Argos',
           solicitudes,
           empresa,
-          nit
+          nit,
+          interventores
       });
   } catch (error) {
       console.error('[CONTROLADOR] Error:', error);
@@ -96,15 +107,17 @@ controller.crearSolicitud = async (req, res) => {
       console.log('[CONTROLADOR] Usuario ID:', id);
 
       // Asegúrate de que los demás datos están presentes
-      const { empresa, nit, lugar, labor, cedula, nombre, inicio_obra, fin_obra, dias_trabajo } = req.body;
+      const { empresa, nit, lugar, labor, interventor_id, cedula, nombre, inicio_obra, fin_obra, dias_trabajo } = req.body;
+
+      console.log("datos traidos del cliente: ",req.body)
 
       // Aquí va la lógica para crear la solicitud en la base de datos
       const query = `
-          INSERT INTO solicitudes (usuario_id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor)
+          INSERT INTO solicitudes (usuario_id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor,interventor_id)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?);
       `;
       const [result] = await connection.execute(query, [
-          id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor
+          id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor, interventor_id
       ]);
 
       console.log('[CONTROLADOR] Solicitud creada con éxito', result);

@@ -6,12 +6,26 @@
   <title><%= title %></title>
   <!-- Estilos de Bootstrap -->
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script> <!-- CDN de Tailwind CSS -->
+
   <!-- Estilos para SweetAlert -->
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 </head>
 <body>
+  <!-- Barra de navegación -->
+  <nav class="flex justify-between items-center bg-gray-800 text-white p-4" id="nav">
+    <a class="text-lg font-semibold" href="#">Vista SST GA</a>
+    <a class="text-lg" href="/logout">Cerrar sesión</a>
+  </nav>
+
   <div class="container mt-5">
-    <h1>Solicitudes Pendientes</h1>
+    <h1>Solicitudes</h1>
+
+    <!-- Filtro por ID -->
+    <div class="mb-3">
+      <label for="filtroId" class="form-label">Filtrar por ID:</label>
+      <input type="text" class="form-control" id="filtroId" placeholder="Ingrese el ID de la solicitud">
+    </div>
 
     <!-- Tabla Responsiva -->
     <div class="table-responsive">
@@ -26,13 +40,14 @@
             <th>Días Solicitados</th>
             <th>Lugar</th>
             <th>Labor</th>
+            <th>Interventor</th>
             <th>Documentos</th>
             <th>Acción</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="tablaSolicitudes">
           <% solicitud.forEach(solicitud => { %>
-            <tr>
+            <tr class="solicitud-item" data-id="<%= solicitud.id %>">
               <td><%= solicitud.id %></td>
               <td><%= solicitud.empresa %></td>
               <td><%= solicitud.nit %></td>
@@ -41,6 +56,8 @@
               <td><%= solicitud.dias_trabajo %></td>
               <td><%= solicitud.lugar %></td>
               <td><%= solicitud.labor %></td>
+              <td><%= solicitud.interventor %></td>
+
               <td>
                 <a href="/descargar-solicitud/<%= solicitud.id %>" target="_blank" class="btn btn-info btn-sm">Descargar Documentos</a>
               </td>
@@ -58,7 +75,6 @@
                   <span class="badge <%= ['negada'].includes(solicitud.estado) ? 'badge-danger' : 'badge-success' %>">
                     <%= ['negada'].includes(solicitud.estado) ? 'Negada' : 'Aprobado' %>
                   </span>
-                  
                 <% } %>
               </td>
             </tr>
@@ -98,15 +114,28 @@
         </div>
       </div>
     </div>
-  </div>  <!-- SweetAlert -->
-  
-  
-  
+  </div>
+
+  <!-- SweetAlert -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
   <script>
+    // Filtrar las solicitudes por ID
+    $('#filtroId').on('input', function() {
+      var idFiltro = $(this).val().toLowerCase();
+
+      $('#tablaSolicitudes .solicitud-item').each(function() {
+        var solicitudId = $(this).data('id').toString();
+        if (solicitudId.indexOf(idFiltro) !== -1) {
+          $(this).show();
+        } else {
+          $(this).hide();
+        }
+      });
+    });
+
     // Establecer los datos en el modal cuando se abre
     $('#modalNegar').on('show.bs.modal', function (event) {
       var button = $(event.relatedTarget); // Botón que activó el modal

@@ -21,7 +21,7 @@ controller.vistaInterventor = async (req, res) => {
     const decoded = jwt.verify(token, SECRET_KEY);
     console.log('[DEBUG] Token decodificado:');  // Depuración: Ver el token decodificado
 
-    const { role } = decoded;
+    const { role, id } = decoded;
 
     // Verificar si el rol es 'interventor'
     if (role !== 'interventor') {
@@ -43,6 +43,8 @@ controller.vistaInterventor = async (req, res) => {
         s.labor,
         s.empresa,
         s.nit,
+        us.username AS interventor,
+
 
         -- Determinar si la solicitud está vencida o no
         CASE
@@ -71,10 +73,11 @@ controller.vistaInterventor = async (req, res) => {
 
       FROM acciones a
       JOIN solicitudes s ON a.solicitud_id = s.id
+      LEFT JOIN users us ON us.id  = s.interventor_id
       WHERE 
-        (a.accion IN ('aprobada', 'pendiente') OR s.estado IN ('en labor', 'labor detenida'))
+        (a.accion IN ('aprobada', 'pendiente') OR s.estado IN ('en labor', 'labor detenida')) AND s.interventor_id = ?
       ORDER BY a.id DESC;
-    `);
+    `, [id]);
 
     console.log('[DEBUG] Acciones obtenidas de la base de datos:');  // Depuración: Ver las acciones obtenidas
 

@@ -158,7 +158,7 @@ router.post('/generar-solicitud', upload.fields([
     
 
     // Aquí aseguramos que los datos del formulario estén completos
-    const { empresa, nit, lugar, labor, cedula, nombre, inicio_obra, fin_obra, dias_trabajo } = req.body;
+    const { empresa, nit, lugar, labor, interventor_id, cedula, nombre, inicio_obra, fin_obra, dias_trabajo } = req.body;
 
     // Lógica para crear la solicitud en la base de datos
     const token = req.cookies.token;
@@ -181,11 +181,11 @@ router.post('/generar-solicitud', upload.fields([
 
         // Crear la solicitud en la base de datos, incluyendo solo los nombres de los archivos ARL y pasocial
         const query = `
-            INSERT INTO solicitudes (usuario_id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor, arl_documento, pasocial_documento)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            INSERT INTO solicitudes (usuario_id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor, interventor_id, arl_documento, pasocial_documento)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         `;
         const [result] = await connection.execute(query, [
-            id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor, 
+            id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor, interventor_id,
             fileNames.arl || null, // Solo el nombre del archivo ARL
             fileNames.pasocial || null // Solo el nombre del archivo pasocial
         ]);

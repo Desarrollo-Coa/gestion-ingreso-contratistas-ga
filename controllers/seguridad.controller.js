@@ -14,27 +14,56 @@ controller.vistaSeguridad = async (req, res) => {
         const decoded = jwt.verify(token, SECRET_KEY);
         if (decoded.role !== 'seguridad') return res.redirect('/login');
 
-        // Obtener solicitudes y calcular estados
-        const [solicitud] = await connection.execute(`
-            SELECT id, empresa, nit, estado,
-                DATE_FORMAT(inicio_obra, '%d/%m/%Y') AS inicio_obra,
-                DATE_FORMAT(fin_obra, '%d/%m/%Y') AS fin_obra,
-                CASE
-                    -- Si está aprobada y la fecha de fin ya pasó
-                    WHEN estado = 'aprobada' AND CURDATE() > DATE(fin_obra) THEN 'pendiente ingreso - vencido'
-                    -- Si está aprobada y aún no ha vencido
-                    WHEN estado = 'aprobada' THEN 'pendiente ingreso'
-                    -- Si está en labor y vencida
-                    WHEN estado = 'en labor' AND CURDATE() > DATE(fin_obra) THEN 'en labor - vencida'
-                    -- Si está en labor
-                    WHEN estado = 'en labor' THEN 'en labor'
-                    -- Si está detenida
-                    WHEN estado = 'labor detenida' THEN 'labor detenida'
-                    ELSE estado
-                END AS estado_actual
-            FROM solicitudes
-            WHERE estado IN ('aprobada', 'en labor', 'labor detenida' )
-            ORDER BY id DESC
+        // // Obtener solicitudes y calcular estados
+        // const [solicitud] = await connection.execute(`
+        //     SELECT id, empresa, nit, estado,
+        //         DATE_FORMAT(inicio_obra, '%d/%m/%Y') AS inicio_obra,
+        //         DATE_FORMAT(fin_obra, '%d/%m/%Y') AS fin_obra,
+        //         CASE
+        //             -- Si está aprobada y la fecha de fin ya pasó
+        //             WHEN estado = 'aprobada' AND CURDATE() > DATE(fin_obra) THEN 'pendiente ingreso - vencido'
+        //             -- Si está aprobada y aún no ha vencido
+        //             WHEN estado = 'aprobada' THEN 'pendiente ingreso'
+        //             -- Si está en labor y vencida
+        //             WHEN estado = 'en labor' AND CURDATE() > DATE(fin_obra) THEN 'en labor - vencida'
+        //             -- Si está en labor
+        //             WHEN estado = 'en labor' THEN 'en labor'
+        //             -- Si está detenida
+        //             WHEN estado = 'labor detenida' THEN 'labor detenida'
+        //             ELSE estado
+        //         END AS estado_actual
+        //     FROM solicitudes
+        //     WHERE estado IN ('aprobada', 'en labor', 'labor detenida' )
+        //     ORDER BY id DESC
+        // `);
+
+
+        
+        // Obtener solicitudes y calcular estados 
+    const [solicitud] = await connection.execute(`
+       SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
+       DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
+       DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
+       CASE
+           -- Si está aprobada y la fecha de fin ya pasó
+           WHEN s.estado = 'aprobada' AND CURDATE() > DATE(s.fin_obra) THEN 'pendiente ingreso - vencido'
+           -- Si está aprobada y aún no ha vencido
+           WHEN s.estado = 'aprobada' THEN 'pendiente ingreso'
+           -- Si está en labor y vencida
+           WHEN s.estado = 'en labor' AND CURDATE() > DATE(s.fin_obra) THEN 'en labor - vencida'
+           -- Si está en labor
+           WHEN s.estado = 'en labor' THEN 'en labor'
+           -- Si está detenida
+           WHEN s.estado = 'labor detenida' THEN 'labor detenida'
+           ELSE s.estado
+       END AS estado_actual
+FROM solicitudes s
+JOIN acciones a ON s.id = a.solicitud_id  -- Asumimos que a.solicitud_id es la relación entre las tablas
+LEFT JOIN users us ON us.id = s.interventor_id
+WHERE s.estado IN ('aprobada', 'en labor', 'labor detenida')
+  AND a.accion = 'aprobada'
+ORDER BY s.id DESC;
+
         `);
  
         res.render('seguridad', { solicitud, title: 'Control de Seguridad - Grupo Argos' });
@@ -51,7 +80,7 @@ controller.getSolicitudDetalles = async (req, res) => {
     try {
         const [solicitud] = await connection.execute(
             `
-            SELECT id, empresa, nit, estado,
+            SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
                 DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra,
                 DATE_FORMAT(fin_obra, '%Y-%m-%d') AS fin_obra,
                 CASE
@@ -69,8 +98,9 @@ controller.getSolicitudDetalles = async (req, res) => {
                 END AS estado_actual,
                 lugar,
                 labor
-            FROM solicitudes
-            WHERE id = ?  AND  estado IN ('aprobada', 'en labor', 'labor detenida' )
+            FROM solicitudes s
+            LEFT JOIN users us ON us.id = s.interventor_id
+            WHERE s.id = ?  AND  estado IN ('aprobada', 'en labor', 'labor detenida' )
             `,
             [id]
         );
@@ -113,30 +143,33 @@ controller.qrAccesosModal = async (req, res) => {
 
         // Primera consulta: Obtener todas las solicitudes y calcular estados
         const [solicitud] = await connection.execute(`
-           SELECT id, empresa, nit, estado,
-                DATE_FORMAT(inicio_obra, '%d/%m/%Y') AS inicio_obra,
-                DATE_FORMAT(fin_obra, '%d/%m/%Y') AS fin_obra,
-                CASE
-                    -- Si está aprobada y la fecha de fin ya pasó
-                    WHEN estado = 'aprobada' AND CURDATE() > DATE(fin_obra) THEN 'pendiente ingreso - vencido'
-                    -- Si está aprobada y aún no ha vencido
-                    WHEN estado = 'aprobada' THEN 'pendiente ingreso'
-                    -- Si está en labor y vencida
-                    WHEN estado = 'en labor' AND CURDATE() > DATE(fin_obra) THEN 'en labor - vencida'
-                    -- Si está en labor
-                    WHEN estado = 'en labor' THEN 'en labor'
-                    -- Si está detenida
-                    WHEN estado = 'labor detenida' THEN 'labor detenida'
-                    ELSE estado
-                END AS estado_actual
-            FROM solicitudes
-            WHERE estado IN ('aprobada', 'en labor', 'labor detenida' )
-            ORDER BY id DESC
+             SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
+       DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
+       DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
+       CASE
+           -- Si está aprobada y la fecha de fin ya pasó
+           WHEN s.estado = 'aprobada' AND CURDATE() > DATE(s.fin_obra) THEN 'pendiente ingreso - vencido'
+           -- Si está aprobada y aún no ha vencido
+           WHEN s.estado = 'aprobada' THEN 'pendiente ingreso'
+           -- Si está en labor y vencida
+           WHEN s.estado = 'en labor' AND CURDATE() > DATE(s.fin_obra) THEN 'en labor - vencida'
+           -- Si está en labor
+           WHEN s.estado = 'en labor' THEN 'en labor'
+           -- Si está detenida
+           WHEN s.estado = 'labor detenida' THEN 'labor detenida'
+           ELSE s.estado
+       END AS estado_actual
+FROM solicitudes s
+JOIN acciones a ON s.id = a.solicitud_id  -- Asumimos que a.solicitud_id es la relación entre las tablas
+LEFT JOIN users us ON us.id = s.interventor_id
+WHERE s.estado IN ('aprobada', 'en labor', 'labor detenida')
+  AND a.accion = 'aprobada'
+ORDER BY s.id DESC;
         `);
 
         // Segunda consulta: Detalles de una solicitud específica
         const [solicitudDetails] = await connection.execute(`
-               SELECT id, empresa, nit, estado,
+             SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
                 DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra,
                 DATE_FORMAT(fin_obra, '%Y-%m-%d') AS fin_obra,
                 CASE
@@ -154,8 +187,9 @@ controller.qrAccesosModal = async (req, res) => {
                 END AS estado_actual,
                 lugar,
                 labor
-            FROM solicitudes
-            WHERE id = ?  AND  estado IN ('aprobada', 'en labor', 'labor detenida' )
+            FROM solicitudes s
+            LEFT JOIN users us ON us.id = s.interventor_id
+            WHERE s.id = ?  AND  estado IN ('aprobada', 'en labor', 'labor detenida' )
         `, [id]);
 
         // Verificar si la solicitud específica existe
@@ -181,6 +215,7 @@ controller.qrAccesosModal = async (req, res) => {
                 inicio_obra: solicitudDetails[0].inicio_obra,
                 fin_obra: solicitudDetails[0].fin_obra,
                 estado: solicitudDetails[0].estado_actual,
+                interventor: solicitudDetails[0].interventor,
                 colaboradores,
             },
             modalId: id,
