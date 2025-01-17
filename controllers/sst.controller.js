@@ -358,11 +358,11 @@ controller.descargarSolicitud = async (req, res) => {
     colaboradores.forEach(colaborador => {
       if (colaborador.foto) {
         const ext = path.extname(colaborador.foto);
-        documents.push({ bucket: 'uploads', fileName: colaborador.foto, name: `FOTOCC_${colaborador.cedula}${ext}` });
+        documents.push({ bucket: 'uploads', fileName: colaborador.foto, name: `FOTOCB_${colaborador.cedula}${ext}` });
       }
       if (colaborador.cedulaFoto) {
         const ext = path.extname(colaborador.cedulaFoto);
-        documents.push({ bucket: 'uploads', fileName: colaborador.cedulaFoto, name: `FOTOCB_${colaborador.cedula}${ext}` });
+        documents.push({ bucket: 'uploads', fileName: colaborador.cedulaFoto, name: `FOTOCC_${colaborador.cedula}${ext}` });
       }
     });
 
