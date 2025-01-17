@@ -1,13 +1,29 @@
 const bcrypt = require('bcrypt');
 const connection = require('../db/db');  // Usando mysql2/promise
 const controller = {};
+require('dotenv').config();
 
  
+
+// Leer la variable de entorno REGISTRO_ROLES
+const registroRoles = process.env.REGISTRO_HABILITAR_SI_NO;
+
+// Controlador para el formulario de registro
 controller.registerForm = async (req, res) => {
     try {
-        // Consultar los roles desde la base de datos con promesas
-        // const [roles] = await connection.query('SELECT id, role_name FROM roles where role_name = "contratista" ');
-        const [roles] = await connection.query('SELECT id, role_name FROM roles');
+        let roles = [];
+
+        // Verificar el valor de REGISTRO_ROLES y realizar la consulta correspondiente
+        if (registroRoles === "SI") {
+            // Si REGISTRO_ROLES es SI, obtienes todos los roles
+            const [allRoles] = await connection.query('SELECT id, role_name FROM roles');
+            roles = allRoles;
+        } else if (registroRoles === "NO") {
+            // Si REGISTRO_ROLES es NO, solo obtienes el rol "contratista"
+            const [contratistaRole] = await connection.query('SELECT id, role_name FROM roles WHERE role_name = "contratista"');
+            roles = contratistaRole;
+        }
+
         console.log('Roles obtenidos:', roles); // Verifica si los roles se obtienen correctamente
 
         // Verificar que el objeto roles esté bien definido antes de renderizar
@@ -26,7 +42,6 @@ controller.registerForm = async (req, res) => {
         res.status(500).send('Error en la base de datos');
     }
 };
-
 
 controller.register = async (req, res) => {
     const { username, password, role, empresa, nit } = req.body;
