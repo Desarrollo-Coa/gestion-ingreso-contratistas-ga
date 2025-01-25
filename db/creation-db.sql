@@ -54,9 +54,11 @@ CREATE TABLE IF NOT EXISTS solicitudes (
     estado ENUM('pendiente', 'aprobada', 'negada', 'en labor', 'labor detenida' ) DEFAULT 'pendiente',
     lugar VARCHAR(255) NOT NULL,  -- Nueva columna para el lugar
     labor VARCHAR(255) NOT NULL,   -- Nueva columna para la labor
+    interventor_id INT NOT NULL,   -- Nueva columna para la labor
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (interventor_id) REFERENCES users(id) ON DELETE CASCADE
 ); 
 
 -- Tabla de Colaboradores
