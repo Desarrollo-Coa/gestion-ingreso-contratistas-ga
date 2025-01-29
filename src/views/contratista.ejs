@@ -105,7 +105,7 @@
 
               <label for="cedulaFoto" class="block">Seleccionar Cédula </label>
               <input type="file" id="cedula" name="cedulaFoto[]" class="p-2 border border-gray-300 rounded-md w-full"
-                accept="image/*" required>
+                accept="image/*">
               <span class="text-gray-500">Selecciona cédula del colaborador</span>
 
             </div>
@@ -119,12 +119,11 @@
         <div class="mb-6">
           <div class="text-lg font-semibold mb-3">Seguridad Social de Trabajadores</div>
           <label for="arl" class="block text-sm font-semibold text-gray-700">Documento ARL</label>
-          <input type="file" name="arl" id="arl" class="mt-1 p-2 border border-gray-300 rounded-md w-full" required>
+          <input type="file" name="arl" id="arl" class="mt-1 p-2 border border-gray-300 rounded-md w-full">
 
           <label for="pasocial" class="block text-sm font-semibold text-gray-700 mt-4">Planilla de Pago Seguridad
             Social</label>
-          <input type="file" name="pasocial" id="pasocial" class="mt-1 p-2 border border-gray-300 rounded-md w-full"
-            required>
+          <input type="file" name="pasocial" id="pasocial" class="mt-1 p-2 border border-gray-300 rounded-md w-full">
         </div>
 
         <!-- Fechas de Obra -->
@@ -172,7 +171,6 @@
             <p>Lugar: <%= solicitud.lugar %></p>
             <p>Labor: <%= solicitud.labor %></p>
             <p>Interventor: <%= solicitud.interventor %></p>
-            
             <p>Estado:
               <% if (solicitud.estado_actual === 'aprobado por sst') { %>
                 <span class="estado text-yellow-500 font-semibold">Aprobado por SST</span>
@@ -184,11 +182,18 @@
                 <button class="btn btn-info text-white bg-blue-600 hover:bg-blue-700 py-2 px-4 rounded-md text-xs" id="verQR-<%= solicitud.id %>">Ver QR</button>
               <% } else if (solicitud.estado_actual === 'labor detenida') { %>
                 <span class="estado text-gray-500 font-semibold">Labor detenida</span>
+              <% } else if (solicitud.estado_actual === 'pendiente ingreso - vencido') { %>
+                <span class="estado text-red-500 font-semibold">Pendiente Ingreso - Vencido</span>
+              <% } else if (solicitud.estado_actual === 'en labor - vencida') { %>
+                <span class="estado text-red-600 font-semibold">En Labor - Vencida</span> <!-- Color más fuerte para vencido -->
+              <% } else if (solicitud.estado_actual === 'negada') { %>
+                <span class="estado text-red-700 font-semibold">Negada</span> <!-- Color más oscuro para negada -->
               <% } else { %>
                 <span class="estado text-green-500 font-semibold"><%= solicitud.estado_actual %></span>
               <% } %>
             </p>
             <p>Comentario: <span class="text-muted text-sm"><%= solicitud.comentario %></span></p>
+             
           </div>
         <% }); %>
       </div>
@@ -253,12 +258,12 @@
                 class="p-2 border border-gray-300 rounded-md w-full" required>
               <label for="foto" class="block">Seleccionar Foto</label>
               <input type="file" id="foto" name="foto[]" class="p-2 border border-gray-300 rounded-md w-full"
-                accept="image/*" required>
+                accept="image/*" >
               <span class="text-gray-500">Selecciona una foto del colaborador</span>
 
               <label for="cedulaFoto" class="block">Seleccionar Cédula </label>
               <input type="file" id="cedula" name="cedulaFoto[]" class="p-2 border border-gray-300 rounded-md w-full"
-                accept="image/*" required>
+                accept="image/*" >
               <span class="text-gray-500">Selecciona cédula del colaborador</span>
 
   `;
@@ -287,54 +292,162 @@
       }
     }
 
-    // Manejador del evento de submit para evitar envíos múltiples
-    document.getElementById('formulario').addEventListener('submit', async function (event) {
-      event.preventDefault(); // Previene el comportamiento por defecto del formulario (enviar)
+    // // Manejador del evento de submit para evitar envíos múltiples
+    // document.getElementById('formulario').addEventListener('submit', async function (event) {
+    //   event.preventDefault(); // Previene el comportamiento por defecto del formulario (enviar)
 
-      const submitButton = document.getElementById('submitButton');
-      submitButton.disabled = true; // Deshabilitar el botón para prevenir un segundo clic
+    //   const submitButton = document.getElementById('submitButton');
+    //   submitButton.disabled = true; // Deshabilitar el botón para prevenir un segundo clic
 
-      // Mostrar una advertencia al usuario
-      submitButton.innerHTML = 'Enviando...';
+    //   // Mostrar una advertencia al usuario
+    //   submitButton.innerHTML = 'Enviando...';
  
 
        
 
-      const formData = new FormData(this);
-      formData.forEach((value, key) => {
-      console.log(key, value);  
-      });
+    //   const formData = new FormData(this);
+    //   formData.forEach((value, key) => {
+    //   console.log(key, value);  
+    //   });
 
 
-      // Log de los datos para verificar
-      console.log("Datos del formulario a enviar:", formData);
-      for (const [key, value] of formData.entries()) {
-        console.log(`${key}: ${value}`);
-      }
+    //   // Log de los datos para verificar
+    //   console.log("Datos del formulario a enviar:", formData);
+    //   for (const [key, value] of formData.entries()) {
+    //     console.log(`${key}: ${value}`);
+    //   }
 
-      // Enviar los datos al servidor
-      try {
-        const response = await fetch('/generar-solicitud', {
-          method: 'POST',
-          body: formData
-        });
+    //   // Enviar los datos al servidor
+    //   try {
+    //     const response = await fetch('/generar-solicitud', {
+    //       method: 'POST',
+    //       body: formData
+    //     });
 
-        // Verificar si la solicitud fue exitosa
-        if (response.ok) {
-          swal('Solicitud enviada correctamente');
-        } else {
-          swal('Error al enviar la solicitud');
-        }
-      } catch (error) {
-        console.error('Error al enviar la solicitud:', error);
-        swal('Error de conexión');
-      } finally {
-        // Reactivar el botón de submit en caso de que falle la solicitud
-        submitButton.disabled = false;
-        submitButton.innerHTML = 'Enviar';
-        document.getElementById('formulario').reset();
-      }
+    //     // Verificar si la solicitud fue exitosa
+    //     if (response.ok) {
+    //       swal('Solicitud enviada correctamente');
+    //     } else {
+    //       swal('Error al enviar la solicitud');
+    //     }
+    //   } catch (error) {
+    //     console.error('Error al enviar la solicitud:', error);
+    //     swal('Error de conexión');
+    //   } finally {
+    //     // Reactivar el botón de submit en caso de que falle la solicitud
+    //     submitButton.disabled = false;
+    //     submitButton.innerHTML = 'Enviar';
+    //     document.getElementById('formulario').reset();
+    //   }
+    // });
+// Manejador del evento de submit para evitar envíos múltiples
+document.getElementById('formulario').addEventListener('submit', async function (event) {
+  event.preventDefault(); // Previene el comportamiento por defecto del formulario (enviar)
+
+  const submitButton = document.getElementById('submitButton');
+  submitButton.disabled = true; // Deshabilitar el botón para prevenir un segundo clic
+  submitButton.innerHTML = 'Enviando...';
+
+  // Optimización de las imágenes antes de enviarlas
+  const formData = new FormData(this);
+
+  // Obtener las imágenes de los colaboradores
+  const fotoFiles = formData.getAll('foto[]'); 
+
+  try {
+    // Solo optimizar imágenes si las hay
+    let optimizedFotos = [];
+    let optimizedCedulas = [];
+
+    // Verificar y optimizar fotos si existen
+    if (fotoFiles.length > 0) {
+      optimizedFotos = await Promise.all(fotoFiles.map(file => optimizeImage(file)));
+    }
+ 
+
+    // Reemplazar las fotos optimizadas en el FormData
+    optimizedFotos.forEach((optimizedFile, index) => {
+      formData.set('foto[]', optimizedFile, `foto_${index + 1}.jpg`); // Renombrar para evitar conflictos
     });
+ 
+
+    // Log de los datos para verificar
+    console.log("Datos del formulario a enviar:", formData);
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`);
+    }
+
+    // Enviar los datos al servidor
+    const response = await fetch('/generar-solicitud', {
+      method: 'POST',
+      body: formData
+    });
+
+    // Verificar si la solicitud fue exitosa
+    if (response.ok) {
+      swal('Solicitud enviada correctamente');
+    } else {
+      swal('Error al enviar la solicitud');
+    }
+  } catch (error) {
+    console.error('Error al enviar la solicitud:', error);
+    swal('Error de conexión');
+  } finally {
+    // Reactivar el botón de submit en caso de que falle la solicitud
+    submitButton.disabled = false;
+    submitButton.innerHTML = 'Enviar';
+    document.getElementById('formulario').reset();
+  }
+});
+
+
+// Función para optimizar la imagen
+async function optimizeImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    
+    reader.onload = function (e) {
+      img.onload = function () {
+        // Crear un canvas para redimensionar la imagen
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const maxWidth = 800; // Máxima anchura de la imagen optimizada
+        const maxHeight = 800; // Máxima altura de la imagen optimizada
+        
+        let width = img.width;
+        let height = img.height;
+
+        // Calculamos la escala para ajustar la imagen
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = width * ratio;
+          height = height * ratio;
+        }
+
+        // Configurar el canvas para la imagen redimensionada
+        canvas.width = width;
+        canvas.height = height;
+
+        // Dibujar la imagen redimensionada en el canvas
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convertir la imagen del canvas en un nuevo archivo optimizado
+        canvas.toBlob(function (blob) {
+          const optimizedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+          resolve(optimizedFile);
+        }, 'image/jpeg', 0.8); // Usar calidad 80% para reducir el tamaño
+      };
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 
     // Seleccionar todos los botones "Ver QR"

@@ -323,6 +323,97 @@ async function downloadFromSupabase(bucket, fileName, localPath) {
 
 
 
+// controller.descargarSolicitud = async (req, res) => {
+//   const { id } = req.params;
+
+//   try {
+//     console.log('[RUTA] Descargando documentos de la solicitud con ID:', id);
+
+//     // Obtener la solicitud de la base de datos
+//     const query = 'SELECT * FROM solicitudes WHERE id = ?';
+//     const [solicitud] = await connection.execute(query, [id]);
+
+//     if (!solicitud || solicitud.length === 0) {
+//       return res.status(404).send('Solicitud no encontrada');
+//     }
+
+//     // Recuperar los documentos ARL y Seguridad Social
+//     const arlDocument = solicitud[0].arl_documento;
+//     const pasocialDocument = solicitud[0].pasocial_documento;
+
+//     if (!arlDocument || !pasocialDocument) {
+//       return res.status(400).send('Faltan documentos necesarios (ARL o Seguridad Social)');
+//     }
+
+//     // Lista de documentos a incluir en el ZIP
+//     const documents = [
+//       { bucket: 'uploads', fileName: arlDocument, name: `ARL_${id}${path.extname(arlDocument)}` },
+//       { bucket: 'uploads', fileName: pasocialDocument, name: `Pasocial_${id}${path.extname(pasocialDocument)}` }
+//     ];
+
+//     // Obtener colaboradores y sus fotos
+//     const queryColaboradores = 'SELECT cedula, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?';
+//     const [colaboradores] = await connection.execute(queryColaboradores, [id]);
+
+//     colaboradores.forEach(colaborador => {
+//       if (colaborador.foto) {
+//         const ext = path.extname(colaborador.foto);
+//         documents.push({ bucket: 'uploads', fileName: colaborador.foto, name: `FOTOCB_${colaborador.cedula}${ext}` });
+//       }
+//       if (colaborador.cedulaFoto) {
+//         const ext = path.extname(colaborador.cedulaFoto);
+//         documents.push({ bucket: 'uploads', fileName: colaborador.cedulaFoto, name: `FOTOCC_${colaborador.cedula}${ext}` });
+//       }
+//     });
+
+//     // Define la ruta temporal para el archivo ZIP
+//     const tempDir = process.env.VERCEL ? '/tmp' : path.join('C:', 'tmp');
+//     if (!fs.existsSync(tempDir)) {
+//       fs.mkdirSync(tempDir, { recursive: true });
+//     }
+
+//     const zipPath = path.join(tempDir, `solicitud_${id}.zip`);
+//     const output = fs.createWriteStream(zipPath);
+//     const zip = archiver('zip', { zlib: { level: 9 } });
+
+//     zip.pipe(output);
+
+//     // Descargar cada archivo desde Supabase y añadirlo al ZIP
+//     for (let document of documents) {
+//       const localPath = path.join(tempDir, document.name);
+//       const downloaded = await downloadFromSupabase(document.bucket, document.fileName, localPath);
+//       if (downloaded) {
+//         zip.file(localPath, { name: document.name });
+//       }
+//     }
+
+//     zip.finalize();
+
+//     output.on('close', () => {
+//       console.log('[RUTA] Archivo ZIP creado, enviando al cliente...');
+//       res.download(zipPath, (err) => {
+//         if (err) {
+//           console.error('Error al enviar el archivo ZIP:', err);
+//         }
+
+//         // Limpiar archivos temporales
+//         documents.forEach(doc => {
+//           const localPath = path.join(tempDir, doc.name);
+//           if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+//         });
+//         if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+
+//         console.log('[RUTA] Archivos temporales eliminados.');
+//       });
+//     });
+
+//   } catch (error) {
+//     console.error('[RUTA] Error al generar el archivo ZIP:', error);
+//     res.status(500).send('Error al generar el archivo ZIP');
+//   }
+// };
+
+
 controller.descargarSolicitud = async (req, res) => {
   const { id } = req.params;
 
@@ -341,28 +432,45 @@ controller.descargarSolicitud = async (req, res) => {
     const arlDocument = solicitud[0].arl_documento;
     const pasocialDocument = solicitud[0].pasocial_documento;
 
-    if (!arlDocument || !pasocialDocument) {
-      return res.status(400).send('Faltan documentos necesarios (ARL o Seguridad Social)');
+    // Lista de documentos a incluir en el ZIP (solo si existen)
+    const documents = [];
+
+    if (arlDocument) {
+      documents.push({
+        bucket: 'uploads',
+        fileName: arlDocument,
+        name: `ARL_${id}${path.extname(arlDocument)}`
+      });
     }
 
-    // Lista de documentos a incluir en el ZIP
-    const documents = [
-      { bucket: 'uploads', fileName: arlDocument, name: `ARL_${id}${path.extname(arlDocument)}` },
-      { bucket: 'uploads', fileName: pasocialDocument, name: `Pasocial_${id}${path.extname(pasocialDocument)}` }
-    ];
+    if (pasocialDocument) {
+      documents.push({
+        bucket: 'uploads',
+        fileName: pasocialDocument,
+        name: `Pasocial_${id}${path.extname(pasocialDocument)}`
+      });
+    }
 
-    // Obtener colaboradores y sus fotos
+    // Obtener colaboradores y sus fotos (solo si existen)
     const queryColaboradores = 'SELECT cedula, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?';
     const [colaboradores] = await connection.execute(queryColaboradores, [id]);
 
     colaboradores.forEach(colaborador => {
       if (colaborador.foto) {
         const ext = path.extname(colaborador.foto);
-        documents.push({ bucket: 'uploads', fileName: colaborador.foto, name: `FOTOCB_${colaborador.cedula}${ext}` });
+        documents.push({
+          bucket: 'uploads',
+          fileName: colaborador.foto,
+          name: `FOTOCB_${colaborador.cedula}${ext}`
+        });
       }
       if (colaborador.cedulaFoto) {
         const ext = path.extname(colaborador.cedulaFoto);
-        documents.push({ bucket: 'uploads', fileName: colaborador.cedulaFoto, name: `FOTOCC_${colaborador.cedula}${ext}` });
+        documents.push({
+          bucket: 'uploads',
+          fileName: colaborador.cedulaFoto,
+          name: `FOTOCC_${colaborador.cedula}${ext}`
+        });
       }
     });
 
@@ -412,6 +520,7 @@ controller.descargarSolicitud = async (req, res) => {
     res.status(500).send('Error al generar el archivo ZIP');
   }
 };
+
 
 
 module.exports = controller;

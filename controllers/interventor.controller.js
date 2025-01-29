@@ -4,6 +4,7 @@ const SECRET_KEY = process.env.JWT_SECRET || 'secreto';
 const { format } = require('date-fns');  // Importamos la función 'format' de date-fns
 const QRCode = require('qrcode');
 
+
 const controller = {}; 
  
 controller.vistaInterventor = async (req, res) => {
