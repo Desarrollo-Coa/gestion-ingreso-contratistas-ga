@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const connection = require('../db/db');  // Conexión a la base de datos (ya manejada como una promesa)
-const { render } = require('pug');
 const SECRET_KEY = process.env.JWT_SECRET || 'secreto';  // Asegúrate de tener esta variable de entorno configurada
 const controllers = {};
 

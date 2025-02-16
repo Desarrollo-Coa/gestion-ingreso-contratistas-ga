@@ -22,14 +22,16 @@
             
             display: none;
         }
+        #advertencia{
+            color: #ff0000;
+        }
     </style>
 
 </head>
-<body>
-    
+<body>  
 <!-- Barra de navegación -->
 <nav class="flex justify-between items-center bg-gray-800 text-white p-4" id="nav">
-    <a class="text-lg font-semibold" href="#">Vista Seguridad GA</a>
+    <a class="text-lg font-semibold" href="#">Vista Seguridad GA - <%= username  %> </a>
     <a class="text-lg" href="/logout">Cerrar sesión</a>
   </nav>
   
@@ -113,6 +115,10 @@
                         <p><strong>Fin de Obra:</strong> <span id="detalleFin"></span></p>
                         <p><strong>Estado:</strong> <span id="detalleEstado"></span></p>
                         <p><strong>Interventor:</strong> <span id="detalleInterventor"></span></p>
+                        <p><span id="advertencia"></span></p>
+
+
+                        
                     </div>
                 </div>
 
@@ -145,6 +151,7 @@
         document.getElementById('detalleLugar').textContent = modalData.lugar || 'N/A';
         document.getElementById('detalleLabor').textContent = modalData.labor || 'N/A';
         document.getElementById('detalleInterventor').textContent = modalData.interventor || 'N/A';
+        document.getElementById('advertencia').textContent = modalData.advertencia || '';
 
 
         // Formatear fechas
@@ -185,7 +192,7 @@
                 colDiv.classList.add('col-md-4', 'mb-3');
                 colDiv.innerHTML = `
                     <div class="card">
-                        <img src="${col.foto.replace(/\\/g, '/')}" class="card-img-top" alt="Foto de ${col.nombre}">
+                        <img src="${col.foto}" class="card-img-top" alt="Foto de ${col.nombre}">
                         <div class="card-body">
                             <h6 class="card-title">${col.nombre}</h6>
                             <p class="card-text">Cédula: ${col.cedula}</p>
@@ -208,10 +215,14 @@
         ];
 
         if (estadosNoPermitidos.includes(modalData.estado)) {
+            console.log("Estado no permitido: ", modalData.estado)
+
             registrarIngresoBtn.disabled = true;
             registrarIngresoBtn.classList.add('btn-secondary');
             registrarIngresoBtn.textContent = 'No disponible';
         } else {
+            console.log("Estado no permitido: ", modalData.estado)
+
             registrarIngresoBtn.disabled = false;
             registrarIngresoBtn.classList.remove('btn-secondary');
             registrarIngresoBtn.classList.add('btn-primary');
@@ -256,7 +267,7 @@
 });
 
 async function verDetalles(id) {
-    try {
+    try {       
         const response = await fetch(`/api/solicitudes/${id}`);
         
         if (!response.ok) {
@@ -276,6 +287,8 @@ async function verDetalles(id) {
         document.getElementById('detalleLugar').textContent = data.lugar;
         document.getElementById('detalleLabor').textContent = data.labor;
         document.getElementById('detalleInterventor').textContent = data.interventor;
+        document.getElementById('advertencia').textContent = data.advertencia || '';
+
         // Actualización de clases del estado dinámico
   
   
@@ -318,7 +331,7 @@ async function verDetalles(id) {
                 colDiv.classList.add('col-md-4', 'mb-3');
                 colDiv.innerHTML = `
                     <div class="card">
-                        <img src="${col.foto.replace(/\\/g, '/')}" class="card-img-top" alt="Foto de ${col.nombre}">
+                        <img src="${col.foto}" class="card-img-top" alt="Foto de ${col.nombre}">
                         <div class="card-body">
                             <h6 class="card-title">${col.nombre}</h6>
                             <p class="card-text">Cédula: ${col.cedula}</p>
@@ -340,15 +353,21 @@ async function verDetalles(id) {
             'pendiente ingreso - vencido'
         ];
 
-        if (estadosNoPermitidos.includes(data.estado)) {
+        
+        if (estadosNoPermitidos.includes(data.estado_actual)) {
+            console.log("Estado no permitido: ", estadosNoPermitidos)
             registrarIngresoBtn.disabled = true;
             registrarIngresoBtn.classList.add('btn-secondary');
             registrarIngresoBtn.textContent = 'No disponible';
-        } else {
+        } 
+        else {
+            console.log("Estado permitido: ", data.estado_actual    )
+
             registrarIngresoBtn.disabled = false;
             registrarIngresoBtn.classList.remove('btn-secondary');
             registrarIngresoBtn.classList.add('btn-primary');
             registrarIngresoBtn.textContent = 'Registrar Ingreso';
+ 
 
             registrarIngresoBtn.onclick = async () => {
                 try {

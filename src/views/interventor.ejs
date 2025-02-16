@@ -64,6 +64,7 @@
     <div class="col-md-6 d-flex align-items-end">
       <button type="button" class="btn btn-primary w-100" id="filtrarBtn">Filtrar</button>
     </div>
+     
   </div>
 </form>  
 
@@ -84,6 +85,7 @@
         <th>Vigencia</th>
         <th>Acción</th> <!-- Solo una columna para manejar todas las acciones -->
         <th>Ver QR</th>
+        <th>Detalles</th>
       </tr>
     </thead>
     <tbody>
@@ -125,6 +127,11 @@
               <% } %>
             </td>
 
+            <td>
+                   <button class="btn btn-info btn-sm" id="verDETALLES-<%= accion.solicitud_id %>">Detalles</button>
+       
+            </td>
+
           </tr>
         <% }); %>
       <% } else { %>
@@ -161,6 +168,50 @@
   </div>
 </div>
 
+<!-- Modal para Ver Detalles -->
+<div class="modal fade" id="modalVerDetalles" tabindex="-1" role="dialog" aria-labelledby="modalVerDetallesLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content shadow-lg rounded">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalVerDetallesLabel">Detalles de la Solicitud</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Cerrar">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id="detalles-container">
+        <!-- Los detalles de la solicitud se mostrarán aquí -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal para Ver Foto en Grande -->
+<div class="modal fade" id="modalVerFoto" tabindex="-1" role="dialog" aria-labelledby="modalVerFotoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content shadow-lg rounded">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalVerFotoLabel">Foto Ampliada</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Cerrar">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="fotoAmpliada" src="" alt="Foto Ampliada" class="img-fluid">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+
+
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <!-- Scripts de Bootstrap -->
@@ -175,6 +226,169 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
   <script> 
+  
+  document.addEventListener('DOMContentLoaded', function () {
+  // Evento para abrir el modal de detalles de la solicitud
+  const verDetallesBtns = document.querySelectorAll('[id^="verDETALLES-"]');
+  verDetallesBtns.forEach(btn => {
+    btn.addEventListener('click', async function () {
+      const solicitudId = this.id.replace('verDETALLES-', ''); // Extraer el solicitud_id
+      try {
+        const response = await fetch(`/obtener-detalles-solicitud/${solicitudId}`);
+        if (response.ok) {
+          const detalles = await response.json(); // Asegurarse de recibir JSON
+          const detallesContainer = document.getElementById('detalles-container');
+          detalles.colaboradores.map(colaborador => {
+            console.log(colaborador)
+          })
+          // Construir el contenido del modal con los detalles de la solicitud
+          detallesContainer.innerHTML = `
+              <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header img {
+            width: 100px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 18px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+        }
+        .section p {
+            margin: 5px 0;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .table th, .table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+        .table th {
+            background-color: #f2f2f2;
+        }
+        .table img {
+            width: 100px; /* Ancho fijo */
+            height: 100px; /* Alto fijo */
+            object-fit: cover; /* Ajuste de imagen sin deformación */
+            border: 1px solid #ccc; /* Opcional: marco para imágenes */
+            border-radius: 8px; /* Opcional: bordes redondeados */
+        }
+    </style>
+            <div class="header">
+              <img src="${detalles.logoBase64}" alt="Logo">
+              <h1>Informe de Solicitud</h1>
+              <p>Sistema Gestor de Ingreso Contratistas</p>
+              <p>Documento generado el día: ${detalles.fecha}</p>
+            </div>
+
+<div class="section">
+  <h2>Detalles de la Solicitud</h2>
+  <p><strong>Id de la Solicitud:</strong> ${detalles.solicitud.id || '❌'}</p>
+  <p><strong>Empresa:</strong> ${detalles.solicitud.empresa || '❌'}</p>
+  <p><strong>NIT:</strong> ${detalles.solicitud.nit || '❌'}</p>
+  <p><strong>Lugar:</strong> ${detalles.solicitud.lugar || '❌'}</p>
+  <p><strong>Labor:</strong> ${detalles.solicitud.labor || '❌'}</p>
+  <p><strong>Contratista:</strong> ${detalles.contractorName || '❌'}</p>
+  <p><strong>Interventor:</strong> ${detalles.interventorName || '❌'}</p>
+  <p><strong>Fechas:</strong> ${detalles.solicitud.inicio_obra || '❌'} - ${detalles.solicitud.fin_obra || '❌'}</p> 
+  <p><strong>ARL:</strong> ${detalles.solicitud.arl_documento ? '✅' : '❌'}</p>
+  <p><strong>Planilla de Pago Seguridad Social:</strong> ${detalles.solicitud.planilla_pago_seguridad_social ? '✅' : '❌'}</p>
+  
+</div>
+
+<div class="section">
+  <h2>Colaboradores</h2>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Cédula</th>
+        <th>Nombre</th>
+        <th>Fotos</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${detalles.colaboradores.map(colaborador => `
+        <tr>
+          <td>${colaborador.cedula || '❌'}</td>
+          <td>${colaborador.nombre || '❌'}</td>
+          <td>
+            ${colaborador.foto ? '✅' : '❌'} Foto
+            <br>
+            ${colaborador.foto ? `<img src="${colaborador.foto}" alt="Foto del colaborador" class="foto-colaborador" data-foto="${colaborador.foto}" style="cursor: pointer;">` : ''}
+            <br>
+            ${colaborador.cedulaFoto ? '✅' : '❌'} Cédula
+            <br>
+            ${colaborador.cedulaFoto ? `<img src="${colaborador.cedulaFoto}" alt="Foto de la cédula" class="foto-cedula" data-foto="${colaborador.cedulaFoto}" style="cursor: pointer;">` : ''}
+          </td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+</div>
+          `;
+
+          // Mostrar el modal de detalles
+          $('#modalVerDetalles').modal('show');
+
+          // Agregar eventos a las fotos para ampliarlas
+          const fotosColaborador = document.querySelectorAll('.foto-colaborador');
+          const fotosCedula = document.querySelectorAll('.foto-cedula');
+
+          fotosColaborador.forEach(foto => {
+            foto.addEventListener('click', () => {
+              const fotoAmpliada = document.getElementById('fotoAmpliada');
+              fotoAmpliada.src = foto.getAttribute('data-foto');
+              $('#modalVerFoto').modal('show');
+            });
+          });
+
+          fotosCedula.forEach(foto => {
+            foto.addEventListener('click', () => {
+              const fotoAmpliada = document.getElementById('fotoAmpliada');
+              fotoAmpliada.src = foto.getAttribute('data-foto');
+              $('#modalVerFoto').modal('show');
+            });
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se pudieron obtener los detalles de la solicitud',
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener los detalles:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Hubo un error al obtener los detalles de la solicitud.',
+        });
+      }
+    });
+  });
+});
  async function manejarLabor(solicitudId, button, accion) {
   try {
     const mensajeConfirmacion = accion === 'detener' 
@@ -330,58 +544,81 @@ verQRBtns.forEach(btn => {
   });
 });
      
+document.getElementById('filtrarBtn').addEventListener('click', function () {
+  // Obtener los valores de los filtros
+  const filtroId = document.getElementById('filtroId').value.trim().toLowerCase();
+  const filtroFechaInicio = document.getElementById('filtroFechaInicio').value;
+  const filtroFechaFin = document.getElementById('filtroFechaFin').value;
+  const filtroNit = document.getElementById('filtroNit').value.trim().toLowerCase();
+  const filtroEmpresa = document.getElementById('filtroEmpresa').value.trim().toLowerCase();
 
-  document.getElementById('filtrarBtn').addEventListener('click', function () {
-    let filtroId = document.getElementById('filtroId').value.toLowerCase();
-    let filtroFechaInicio = document.getElementById('filtroFechaInicio').value;
-    let filtroFechaFin = document.getElementById('filtroFechaFin').value;
-    let filtroNit = document.getElementById('filtroNit').value.toLowerCase();
-    let filtroEmpresa = document.getElementById('filtroEmpresa').value.toLowerCase();
-
-    let filas = document.querySelectorAll('#tablaSolicitudes tbody tr');
-
-    filas.forEach(function (fila) {
-      let id = fila.querySelector('.solicitud-id').textContent.toLowerCase();
-      let empresa = fila.cells[1].textContent.toLowerCase(); // Columna Empresa
-      let nit = fila.cells[2].textContent.toLowerCase(); // Columna NIT
-      let inicioObra = new Date(fila.cells[3].textContent); // Columna Inicio de Obra
-      let finObra = new Date(fila.cells[4].textContent); // Columna Fin de Obra
-      let lugar = fila.cells[5].textContent.toLowerCase(); // Columna Lugar
-      let labor = fila.cells[6].textContent.toLowerCase(); // Columna Labor
-      let estado = fila.cells[7].textContent.toLowerCase(); // Columna Estado
-      let vigencia = fila.cells[8].textContent.toLowerCase(); // Columna Vigencia
-
-      let mostrarFila = true;
-
-      // Filtro por ID
-      if (filtroId && !id.includes(filtroId)) {
-        mostrarFila = false;
-      }
-
-      // Filtro por fechas
-      if (filtroFechaInicio && inicioObra < new Date(filtroFechaInicio)) {
-        mostrarFila = false;
-      }
-      if (filtroFechaFin && finObra > new Date(filtroFechaFin)) {
-        mostrarFila = false;
-      }
-
-      // Filtro por NIT
-      if (filtroNit && !nit.includes(filtroNit)) {
-        mostrarFila = false;
-      }
-
-      // Filtro por Empresa
-      if (filtroEmpresa && !empresa.includes(filtroEmpresa)) {
-        mostrarFila = false;
-      }
-
-      // Mostrar u ocultar fila según el filtro
-      fila.style.display = mostrarFila ? '' : 'none';
-    });
+  // Imprimir los valores de los filtros en la consola (para depuración)
+  console.log({
+    mensaje: "Valores de los filtros:",
+    filtroId,
+    filtroFechaInicio,
+    filtroFechaFin,
+    filtroNit,
+    filtroEmpresa
   });
 
+  
+  // Obtener todas las filas de la tabla
+  const filas = document.querySelectorAll('#tablaSolicitudes tbody tr');
 
-  </script>
+  filas.forEach(function (fila) {
+    const id = fila.querySelector('.solicitud-id').textContent.trim().toLowerCase();
+    const empresa = fila.cells[1].textContent.trim().toLowerCase(); // Columna Empresa
+    const nit = fila.cells[2].textContent.trim().toLowerCase(); // Columna NIT
+    const inicioObraTexto = fila.cells[3].textContent.trim(); // Columna Fecha Inicio (DD/MM/YYYY)
+    const finObraTexto = fila.cells[4].textContent.trim(); // Columna Fecha Fin (DD/MM/YYYY)
+
+    // Convertir fechas de la tabla a formato MM/DD/YYYY
+    const inicioObra = convertirFecha(inicioObraTexto);
+    const finObra = convertirFecha(finObraTexto);
+
+    let mostrarFila = true;
+
+    // Filtro por ID
+    if (filtroId && !id.includes(filtroId)) {
+      mostrarFila = false;
+    }
+
+    // Filtro por fechas
+    if (filtroFechaInicio && filtroFechaFin) {
+      const fechaInicioFiltro = new Date(filtroFechaInicio);
+      const fechaFinFiltro = new Date(filtroFechaFin);
+
+      // Mostrar la fila si hay superposición de rangos de fechas
+      if (inicioObra > fechaFinFiltro || finObra < fechaInicioFiltro) {
+        mostrarFila = false;
+      }
+    }
+
+    // Filtro por NIT
+    if (filtroNit && !nit.includes(filtroNit)) {
+      mostrarFila = false;
+    }
+
+    // Filtro por Empresa
+    if (filtroEmpresa && !empresa.includes(filtroEmpresa)) {
+      mostrarFila = false;
+    }
+
+    // Mostrar u ocultar la fila según el filtro
+    fila.style.display = mostrarFila ? '' : 'none';
+  });
+});
+
+// Función para convertir fechas de DD/MM/YYYY a MM/DD/YYYY
+function convertirFecha(fechaTexto) {
+  if (!fechaTexto) return null;
+
+  const [dia, mes, anio] = fechaTexto.split('/');
+  return new Date(`${mes}/${dia}/${anio}`);
+}
+
+</script>
 </body>
 </html>
+ 

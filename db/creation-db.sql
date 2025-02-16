@@ -82,3 +82,33 @@ CREATE TABLE IF NOT EXISTS acciones (
     FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
     FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS lugares (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre_lugar VARCHAR(255) UNIQUE NOT NULL  -- Asegúrate que los nombres sean únicos
+);
+
+-- Inserta algunos lugares de ejemplo
+INSERT INTO lugares (nombre_lugar) VALUES
+('Mallorquin'),
+('Santa Isabel'),
+('Miramar'), 
+('Coa'),
+('Arroyo Leon'),
+('Nisperales'),
+('Lagos Del Cacique'),  
+('Pavas'),
+('Pajonal'),
+('Jesuita'),
+('Insignares'),
+('Becerril'),
+('Morro');
+
+
+CREATE TABLE IF NOT EXISTS sst_documentos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    solicitud_id INT NOT NULL,  -- Referencia a la tabla solicitudes
+    url VARCHAR(255) NOT NULL,  -- Ruta del archivo
+    fecha_de_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Fecha en que se subió el archivo
+    FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE
+);

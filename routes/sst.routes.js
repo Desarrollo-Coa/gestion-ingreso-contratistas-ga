@@ -92,6 +92,6 @@ if (typeof controller.descargarSolicitud !== 'function') {
       res.status(500).send('Error al descargar documentos de la solicitud');
     }
   });
-}
+} 
 
 module.exports = router;

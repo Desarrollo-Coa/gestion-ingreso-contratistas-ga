@@ -52,16 +52,37 @@
 
           <div class="mb-4">
             <label for="nit" class="block text-sm font-semibold text-gray-700">NIT</label>
-            <input type="number" name="nit" id="nit" class="mt-1 p-2 border border-gray-300 rounded-md w-full"
+            <input type="text" name="nit" id="nit" class="mt-1 p-2 border border-gray-300 rounded-md w-full"
               value="<%= nit %>" required readonly>
           </div>
-
-          <!-- Lugar -->
+<!-- 
           <div class="mb-4">
             <label for="lugar" class="block text-sm font-semibold text-gray-700">Lugar</label>
             <input type="text" name="lugar" id="lugar" class="mt-1 p-2 border border-gray-300 rounded-md w-full"
               required>
           </div>
+-->
+                    <!-- Lugar -->
+                    <div class="mb-4 relative">
+                      <label for="lugar" class="block text-sm font-semibold text-gray-700">Lugar</label>
+                      <input type="text" name="lugar" id="lugar" 
+                             class="mt-1 p-2 border border-gray-300 rounded-md w-full" 
+                             placeholder="Escribe para buscar..." required autocomplete="off">
+                      
+                      <!-- Lista de lugares (se oculta y muestra con JS) -->
+                      <ul id="lugares-list" class="absolute w-full bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto hidden">
+                          <% lugares.forEach(lugar => { %>
+                              <li class="p-2 hover:bg-gray-200 cursor-pointer" data-value="<%= lugar.nombre_lugar %>">
+                                  <%= lugar.nombre_lugar %>
+                              </li>
+                          <% }); %>
+                      </ul>
+                      
+                      <p id="error-lugar" class="text-red-500 text-sm hidden">Debes seleccionar un lugar válido.</p>
+                  </div>
+
+
+          
 
           <!-- Labor -->
           <div class="mb-4">
@@ -193,13 +214,24 @@
               <% } %>
             </p>
             <p>Comentario: <span class="text-muted text-sm"><%= solicitud.comentario %></span></p>
-             
+            
+            <!-- Botones de descarga y generación de documentos -->
+            <div class="mt-4 flex space-x-2">
+              <% const doc = solicitud_url_download.find(d => d.solicitud_id === solicitud.id); %>
+              <% if (doc) { %>
+                <!-- Si existe la URL, mostrar botón de descarga -->
+                <a href="<%= doc.url %>" target="_blank" class="btn btn-success text-white bg-green-600 hover:bg-green-700 py-2 px-4 rounded-md text-xs">Descargar Documentos</a>
+              <% } else { %>
+                <!-- Si no existe la URL, mostrar mensaje -->
+                <p class="text-gray-600 text-sm">Podrá descargar sus archivos en cuanto sean habilitados por SST.</p>
+
+                 
+              <% } %>
+            </div>
           </div>
         <% }); %>
       </div>
     </div>
-    
-
 
   </div>
 
@@ -233,10 +265,18 @@
     </div>
   </div>
 
-
+<!-- Loader overlay -->
+<div id="loader" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <!-- Loader spinner -->
+  <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-opacity-75"></div>
+  <!-- Texto opcional -->
+  <p class="ml-4 text-white text-lg">Procesando archivos...</p>
+</div>
 
 
   <script>
+
+    
     // Función para agregar más campos de personas
     document.getElementById('add-person').addEventListener('click', function () {
       const personasContainer = document.getElementById('personas-container');
@@ -258,7 +298,7 @@
                 class="p-2 border border-gray-300 rounded-md w-full" required>
               <label for="foto" class="block">Seleccionar Foto</label>
               <input type="file" id="foto" name="foto[]" class="p-2 border border-gray-300 rounded-md w-full"
-                accept="image/*" >
+                accept="image/*" required >
               <span class="text-gray-500">Selecciona una foto del colaborador</span>
 
               <label for="cedulaFoto" class="block">Seleccionar Cédula </label>
@@ -292,107 +332,245 @@
       }
     }
 
-    // // Manejador del evento de submit para evitar envíos múltiples
-    // document.getElementById('formulario').addEventListener('submit', async function (event) {
-    //   event.preventDefault(); // Previene el comportamiento por defecto del formulario (enviar)
+//     document.getElementById('formulario').addEventListener('submit', async function (event) {
+//   event.preventDefault(); // Previene el comportamiento por defecto del formulario (enviar)
 
-    //   const submitButton = document.getElementById('submitButton');
-    //   submitButton.disabled = true; // Deshabilitar el botón para prevenir un segundo clic
+//   const submitButton = document.getElementById('submitButton');
+//   submitButton.disabled = true; // Deshabilitar el botón para prevenir un segundo clic
+//   submitButton.innerHTML = 'Enviando...';
 
-    //   // Mostrar una advertencia al usuario
-    //   submitButton.innerHTML = 'Enviando...';
+//   // Optimización de las imágenes antes de enviarlas
+//   const formData = new FormData(this);
+
+//   // Obtener las imágenes de los colaboradores
+//   const fotoFiles = formData.getAll('foto[]'); 
+
+//   try {
+//     // Solo optimizar imágenes si las hay
+//     let optimizedFotos = [];
+//     let optimizedCedulas = [];
+
+//     // Verificar y optimizar fotos si existen
+//     if (fotoFiles.length > 0) {
+//       optimizedFotos = await Promise.all(fotoFiles.map(file => optimizeImage(file)));
+//     }
  
 
-       
+//     // Reemplazar las fotos optimizadas en el FormData
+//     optimizedFotos.forEach((optimizedFile, index) => {
+//       formData.set('foto[]', optimizedFile, `foto_${index + 1}.jpg`); // Renombrar para evitar conflictos
+//     });
+ 
 
-    //   const formData = new FormData(this);
-    //   formData.forEach((value, key) => {
-    //   console.log(key, value);  
-    //   });
+//     // Log de los datos para verificar
+//     console.log("Datos del formulario a enviar:", formData);
+//     for (const [key, value] of formData.entries()) {
+//       console.log(`${key}: ${value}`);
+//     }
+
+//     // Enviar los datos al servidor
+//     const response = await fetch('/generar-solicitud', {
+//       method: 'POST',
+//       body: formData
+//     });
+
+//     // Verificar si la solicitud fue exitosa
+//     if (response.ok) {
+//       swal('Solicitud enviada correctamente');
+//     } else {
+//       swal('Error al enviar la solicitud');
+//     }
+//   } catch (error) {
+//     console.error('Error al enviar la solicitud:', error);
+//     swal('Error de conexión');
+//   } finally {
+//     // Reactivar el botón de submit en caso de que falle la solicitud
+//     submitButton.disabled = false;
+//     submitButton.innerHTML = 'Enviar';
+//     document.getElementById('formulario').reset();
+//   }
+// });
 
 
-    //   // Log de los datos para verificar
-    //   console.log("Datos del formulario a enviar:", formData);
-    //   for (const [key, value] of formData.entries()) {
-    //     console.log(`${key}: ${value}`);
-    //   }
+// Función para optimizar la imagen
+async function optimizeImage(file, quality = 0.8) {
+  return new Promise((resolve) => {
+    // Depuración: Verificar el archivo que se está procesando
+    console.log('Procesando archivo:', file.name, 'Tipo:', file.type, 'Tamaño:', file.size, 'bytes');
 
-    //   // Enviar los datos al servidor
-    //   try {
-    //     const response = await fetch('/generar-solicitud', {
-    //       method: 'POST',
-    //       body: formData
-    //     });
+    // Validar que el archivo sea una imagen
+    if (!file.type.startsWith('image/')) {
+      console.log(`El archivo "${file.name}" no es una imagen. Se subirá sin optimizar.`);
+      resolve(file); // Devuelve el archivo original si no es una imagen
+      return;
+    }
 
-    //     // Verificar si la solicitud fue exitosa
-    //     if (response.ok) {
-    //       swal('Solicitud enviada correctamente');
-    //     } else {
-    //       swal('Error al enviar la solicitud');
-    //     }
-    //   } catch (error) {
-    //     console.error('Error al enviar la solicitud:', error);
-    //     swal('Error de conexión');
-    //   } finally {
-    //     // Reactivar el botón de submit en caso de que falle la solicitud
-    //     submitButton.disabled = false;
-    //     submitButton.innerHTML = 'Enviar';
-    //     document.getElementById('formulario').reset();
-    //   }
-    // });
-// Manejador del evento de submit para evitar envíos múltiples
+    // Validar formatos soportados
+    const supportedFormats = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!supportedFormats.includes(file.type)) {
+      console.log(`El formato de la imagen "${file.name}" no es soportado. Se subirá sin optimizar.`);
+      resolve(file); // Devuelve el archivo original si el formato no es soportado
+      return;
+    }
+
+    const img = new Image();
+    const reader = new FileReader();
+
+    // Manejar errores en la lectura del archivo
+    reader.onerror = () => {
+      console.error(`Error al leer el archivo "${file.name}". Se subirá sin optimizar.`);
+      resolve(file); // Devuelve el archivo original si hay un error al leer
+    };
+
+    // Cuando el archivo se lea correctamente
+    reader.onload = function (e) {
+      img.src = e.target.result;
+
+      // Cuando la imagen se cargue correctamente
+      img.onload = function () {
+        console.log(`Imagen "${file.name}" cargada correctamente. Dimensiones: ${img.width}x${img.height}`);
+
+        // Crear un canvas para redimensionar la imagen
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Calcular las nuevas dimensiones manteniendo la relación de aspecto
+        let width = img.width;
+        let height = img.height;
+
+        // Configurar el canvas con las nuevas dimensiones
+        canvas.width = width;
+        canvas.height = height;
+
+        // Dibujar la imagen redimensionada en el canvas
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convertir la imagen del canvas a un formato optimizado
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              console.error(`Error al convertir la imagen "${file.name}". Se subirá sin optimizar.`);
+              resolve(file); // Devuelve el archivo original si no se puede convertir
+              return;
+            }
+
+            // Crear un nuevo archivo optimizado
+            const optimizedFile = new File([blob], file.name, {
+              type: 'image/webp', // Usar WebP si es posible (mejor compresión)
+              lastModified: Date.now(),
+            });
+
+            console.log(`Imagen "${file.name}" optimizada correctamente. Nuevo tamaño: ${blob.size} bytes`);
+            resolve(optimizedFile);
+          },
+          'image/webp', // Usar WebP por defecto (soporte moderno)
+          quality // Calidad de compresión (0.8 = 80%)
+        );
+      };
+
+      // Manejar errores en la carga de la imagen
+      img.onerror = () => {
+        console.error(`Error al cargar la imagen "${file.name}". Se subirá sin optimizar.`);
+        resolve(file); // Devuelve el archivo original si no se puede cargar
+      };
+    };
+
+    // Leer el archivo como Data URL
+    reader.readAsDataURL(file);
+  });
+}
+
+
 document.getElementById('formulario').addEventListener('submit', async function (event) {
   event.preventDefault(); // Previene el comportamiento por defecto del formulario (enviar)
+
+  // Mostrar el loader
+  const loader = document.getElementById('loader');
+  loader.classList.remove('hidden');
 
   const submitButton = document.getElementById('submitButton');
   submitButton.disabled = true; // Deshabilitar el botón para prevenir un segundo clic
   submitButton.innerHTML = 'Enviando...';
 
-  // Optimización de las imágenes antes de enviarlas
+  // Optimización de los archivos antes de enviarlos
   const formData = new FormData(this);
 
-  // Obtener las imágenes de los colaboradores
-  const fotoFiles = formData.getAll('foto[]'); 
+  // Obtener todos los archivos del formulario
+  const fotoFiles = formData.getAll('foto[]');
+  const cedulaFiles = formData.getAll('cedulaFoto[]'); // Puede estar vacío si no se adjuntan fotos de cédula
 
   try {
-    // Solo optimizar imágenes si las hay
-    let optimizedFotos = [];
+    // Optimizar imágenes (fotos)
+    const optimizedFotos = await Promise.all(
+      fotoFiles.map(async (file) => {
+        return await optimizeImage(file); // Siempre devuelve un archivo (optimizado o original)
+      })
+    );
+
+    // Optimizar imágenes (cédulas), solo si hay archivos y tienen un tamaño mayor que 0
     let optimizedCedulas = [];
+    if (cedulaFiles.length > 0) {
+      optimizedCedulas = await Promise.all(
+        cedulaFiles.map(async (file) => {
+          if (file.size > 0) {
+            return await optimizeImage(file); // Solo optimiza si el archivo tiene contenido
+          } else {
+            return null; // Devuelve null para archivos vacíos
+          }
+        })
+      );
 
-    // Verificar y optimizar fotos si existen
-    if (fotoFiles.length > 0) {
-      optimizedFotos = await Promise.all(fotoFiles.map(file => optimizeImage(file)));
+      // Filtrar los archivos nulos (archivos vacíos)
+      optimizedCedulas = optimizedCedulas.filter(file => file !== null);
     }
- 
 
-    // Reemplazar las fotos optimizadas en el FormData
-    optimizedFotos.forEach((optimizedFile, index) => {
-      formData.set('foto[]', optimizedFile, `foto_${index + 1}.jpg`); // Renombrar para evitar conflictos
+    // Limpiar los archivos originales del FormData
+    formData.delete('foto[]');
+    formData.delete('cedulaFoto[]');
+
+    // Agregar las imágenes optimizadas o originales al FormData (fotos)
+    optimizedFotos.forEach((file, index) => {
+      formData.append('foto[]', file, `foto_${index + 1}.${file.type === 'image/webp' ? 'webp' : file.name.split('.').pop()}`);
     });
- 
 
-    // Log de los datos para verificar
-    console.log("Datos del formulario a enviar:", formData);
-    for (const [key, value] of formData.entries()) {
-      console.log(`${key}: ${value}`);
+    // Agregar las imágenes optimizadas o originales al FormData (cédulas), solo si hay archivos
+    if (optimizedCedulas.length > 0) {
+      optimizedCedulas.forEach((file, index) => {
+        formData.append('cedulaFoto[]', file, `cedula_${index + 1}.${file.type === 'image/webp' ? 'webp' : file.name.split('.').pop()}`);
+      });
     }
 
     // Enviar los datos al servidor
     const response = await fetch('/generar-solicitud', {
       method: 'POST',
-      body: formData
+      body: formData,
     });
 
     // Verificar si la solicitud fue exitosa
     if (response.ok) {
-      swal('Solicitud enviada correctamente');
+      Swal.fire({
+        icon: 'success',
+        title: 'Éxito',
+        text: 'Solicitud enviada correctamente.',
+      });
     } else {
-      swal('Error al enviar la solicitud');
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error al enviar la solicitud.',
+      });
     }
   } catch (error) {
     console.error('Error al enviar la solicitud:', error);
-    swal('Error de conexión');
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Error de conexión. Inténtalo de nuevo.',
+    });
   } finally {
+    // Ocultar el loader
+    loader.classList.add('hidden');
+
     // Reactivar el botón de submit en caso de que falle la solicitud
     submitButton.disabled = false;
     submitButton.innerHTML = 'Enviar';
@@ -400,57 +578,7 @@ document.getElementById('formulario').addEventListener('submit', async function 
   }
 });
 
-
-// Función para optimizar la imagen
-async function optimizeImage(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const reader = new FileReader();
-    
-    reader.onload = function (e) {
-      img.onload = function () {
-        // Crear un canvas para redimensionar la imagen
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        const maxWidth = 800; // Máxima anchura de la imagen optimizada
-        const maxHeight = 800; // Máxima altura de la imagen optimizada
-        
-        let width = img.width;
-        let height = img.height;
-
-        // Calculamos la escala para ajustar la imagen
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width = width * ratio;
-          height = height * ratio;
-        }
-
-        // Configurar el canvas para la imagen redimensionada
-        canvas.width = width;
-        canvas.height = height;
-
-        // Dibujar la imagen redimensionada en el canvas
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Convertir la imagen del canvas en un nuevo archivo optimizado
-        canvas.toBlob(function (blob) {
-          const optimizedFile = new File([blob], file.name, {
-            type: 'image/jpeg',
-            lastModified: Date.now(),
-          });
-          resolve(optimizedFile);
-        }, 'image/jpeg', 0.8); // Usar calidad 80% para reducir el tamaño
-      };
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-
-    // Seleccionar todos los botones "Ver QR"
+// Seleccionar todos los botones "Ver QR"
     const verQRBtns = document.querySelectorAll('[id^="verQR-"]');
 
     // Agregar el evento de clic a cada uno de los botones
@@ -514,7 +642,58 @@ async function optimizeImage(file) {
     function closeModal() {
       document.getElementById('modalVerQR').classList.add('hidden');
     }
+  
 
+ 
+        const inputLugar = document.getElementById("lugar");
+        const listaLugares = document.getElementById("lugares-list");
+        const opciones = listaLugares.querySelectorAll("li");
+        const errorLugar = document.getElementById("error-lugar");
+        const submitBtn = document.getElementById("submitButton");
+        
+        let lugarValido = false;
+
+        // Mostrar lista cuando el usuario escribe
+        inputLugar.addEventListener("input", function() {
+            listaLugares.classList.remove("hidden");
+            const filtro = inputLugar.value.toLowerCase();
+
+            opciones.forEach(opcion => {
+                const texto = opcion.textContent.toLowerCase();
+                if (texto.includes(filtro)) {
+                    opcion.classList.remove("hidden");
+                } else {
+                    opcion.classList.add("hidden");
+                }
+            });
+
+            lugarValido = false;
+        });
+
+        // Ocultar la lista si el usuario hace clic fuera
+        document.addEventListener("click", function(event) {
+            if (!listaLugares.contains(event.target) && event.target !== inputLugar) {
+                listaLugares.classList.add("hidden");
+            }
+        });
+
+        // Seleccionar un valor válido
+        opciones.forEach(opcion => {
+            opcion.addEventListener("click", function() {
+                inputLugar.value = this.dataset.value;
+                listaLugares.classList.add("hidden");
+                lugarValido = true;
+                errorLugar.classList.add("hidden");
+            });
+        });
+
+        // Validación antes de enviar
+        submitBtn.addEventListener("click", function(event) {
+            if (!lugarValido) {
+                event.preventDefault(); // Bloquea el envío si no es válido
+                errorLugar.classList.remove("hidden");
+            }
+        }); 
 
   </script>
   <!-- Enlace a los archivos JS de Bootstrap -->

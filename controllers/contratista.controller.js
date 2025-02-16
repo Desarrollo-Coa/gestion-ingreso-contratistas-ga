@@ -58,12 +58,19 @@ controller.vistaContratista = async (req, res) => {
       `;
 
 
+      // Obtener las URLs de los documentos (si existen)
+      const [solicitud_url_download] = await connection.execute('SELECT * FROM sst_documentos WHERE solicitud_id IN (SELECT id FROM solicitudes)');
+
       const [solicitudes] = await connection.execute(query, [id]);
 
       console.log('[CONTROLADOR] Solicitudes obtenidas:', solicitudes);
 
       const [userDetails] = await connection.query('SELECT empresa, nit FROM users WHERE id = ?', [id]);
 
+      
+      const [lugares] = await connection.query('SELECT * FROM lugares');
+
+      
       
       const [Usersinterventores] = await connection.execute(` 
         SELECT id, username FROM users WHERE role_id = (SELECT id FROM roles WHERE role_name = 'interventor')
@@ -72,14 +79,15 @@ controller.vistaContratista = async (req, res) => {
       const empresa = userDetails.length > 0 ? userDetails[0].empresa : '';
       const nit = userDetails.length > 0 ? userDetails[0].nit : '';
       const interventores =  Usersinterventores.length > 0 ? Usersinterventores : '';
-
-        console.log('Prueba de usuarios Interventores: ' , interventores);
+ 
       res.render('contratista', {
           title: 'Contratista - Grupo Argos',
           solicitudes,
           empresa,
           nit,
-          interventores
+          interventores,
+          lugares,
+          solicitud_url_download: solicitud_url_download
       });
   } catch (error) {
       console.error('[CONTROLADOR] Error:', error);

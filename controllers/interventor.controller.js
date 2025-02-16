@@ -1,9 +1,11 @@
 const jwt = require('jsonwebtoken');
 const connection = require('../db/db');  // Asegúrate de que este connection sea el correcto
+const path = require('path');
+const fs = require('fs');
 const SECRET_KEY = process.env.JWT_SECRET || 'secreto';
 const { format } = require('date-fns');  // Importamos la función 'format' de date-fns
 const QRCode = require('qrcode');
-
+const handlebars = require('handlebars'); 
 
 const controller = {}; 
  
@@ -80,6 +82,60 @@ controller.vistaInterventor = async (req, res) => {
       ORDER BY a.id DESC;
     `, [id]);
 
+
+    // obtener las cedulas de las colaboradores que hacen parte de esa solicitud: 
+//     const [acciones] = await connection.execute(`
+//   SELECT 
+//     a.id AS accion_id,
+//     a.solicitud_id,
+//     a.accion,
+//     a.comentario,
+//     DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
+//     DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
+//     s.estado AS solicitud_estado,
+//     s.lugar,
+//     s.labor,
+//     s.empresa,
+//     s.nit,
+//     us.username AS interventor,
+//     GROUP_CONCAT(c.cedula SEPARATOR ', ') AS cedulas_colaboradores, -- Agregar cédulas de colaboradores
+
+//     -- Determinar si la solicitud está vencida o no
+//     CASE
+//       WHEN DATE(s.fin_obra) < CURDATE() THEN 'Vencida'
+//       ELSE 'Vigente'
+//     END AS estado_vigencia,
+
+//     -- Lógica para el botón de "Aprobar"
+//     CASE
+//       WHEN a.accion = 'pendiente' AND s.estado = 'aprobada' THEN 'Aprobar'
+//       ELSE 'No disponible'
+//     END AS puede_aprobar,
+
+//     -- Lógica para el botón de "Detener Labor"
+//     CASE
+//       WHEN a.accion = 'aprobada' AND s.estado = 'en labor' THEN 'Detener Labor'
+//       ELSE 'No disponible'
+//     END AS puede_detener,
+
+//     -- Lógica para el botón de "Ver QR"
+//     CASE
+//       WHEN a.accion = 'aprobada' AND s.estado IN ('aprobada', 'en labor') 
+//            AND DATE(s.fin_obra) >= CURDATE() THEN 'Ver QR'
+//       ELSE 'No disponible'
+//     END AS puede_ver_qr
+
+//   FROM acciones a
+//   JOIN solicitudes s ON a.solicitud_id = s.id
+//   LEFT JOIN users us ON us.id = s.interventor_id
+//   LEFT JOIN colaboradores c ON c.solicitud_id = s.id -- Unir con la tabla de colaboradores
+//   WHERE 
+//     (a.accion IN ('aprobada', 'pendiente') OR s.estado IN ('en labor', 'labor detenida')) AND s.interventor_id = ?
+//   GROUP BY a.id, s.id -- Agrupar por acción y solicitud
+//   ORDER BY a.id DESC;
+// `, [id]);
+
+
     console.log('[DEBUG] Acciones obtenidas de la base de datos:');  // Depuración: Ver las acciones obtenidas
 
     // Pasar las acciones y otros datos necesarios a la vista
@@ -94,6 +150,60 @@ controller.vistaInterventor = async (req, res) => {
   }
 };
 
+
+// Función para convertir una imagen a Base64
+async function getImageBase64(imagePath) {
+  if (!imagePath) return null;
+  const fullPath = path.join(__dirname, '../public', imagePath);
+  if (fs.existsSync(fullPath)) {
+    return fs.readFileSync(fullPath, 'base64');
+  }
+  return null;
+}
+
+// Función para obtener los detalles de la solicitud
+controller.obtenerDetallesSolicitud = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [solicitud] = await connection.execute('SELECT * FROM solicitudes WHERE id = ?', [id]);
+    if (!solicitud || solicitud.length === 0) {
+      return res.status(404).send('Solicitud no encontrada');
+    }
+
+    const [colaboradores] = await connection.execute('SELECT cedula, nombre, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?', [id]);
+    const [contratista] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].usuario_id]);
+    const [interventor] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].interventor_id]);
+
+    for (const colaborador of colaboradores) {
+      if (colaborador.foto) colaborador.fotoBase64 = await getImageBase64(colaborador.foto);
+      if (colaborador.cedulaFoto) colaborador.cedulaFotoBase64 = await getImageBase64(colaborador.cedulaFoto);
+    }
+
+    // Formatear fechas
+    solicitud.forEach((solici) => {
+      solici.inicio_obra = format(new Date(solici.inicio_obra), 'dd/MM/yyyy');
+      solici.fin_obra = format(new Date(solici.fin_obra), 'dd/MM/yyyy');
+    });
+
+    const logoPath = path.join(__dirname, '../public', 'img', 'logo-ga.jpg');
+    const logoBase64 = fs.readFileSync(logoPath, 'base64');
+
+    const data = {
+      logoBase64: `data:image/png;base64,${logoBase64}`,
+      fecha: new Date().toLocaleDateString(),
+      solicitud: solicitud[0],
+      contractorName: contratista[0].username,
+      interventorName: interventor[0].username,
+      colaboradores,
+    };
+
+    res.json(data);
+  } catch (error) {
+    console.error('[RUTA] Error al obtener los detalles de la solicitud:', error);
+    res.status(500).send('Error al obtener los detalles de la solicitud');
+  }
+};
 
 
 controller.aprobarSolicitud = async (req, res) => {
@@ -177,7 +287,7 @@ controller.generarQR = async (req, res) => {
     }
 
     // Generamos el código QR con el formato de URL solicitado
-    const qrData = `gestion-ingreso-contratistas-ga.vercel.app/vista-seguridad/${solicitudId}`;
+    const qrData = `gestion-ingreso-contratistas-v1.vercel.app/vista-seguridad/${solicitudId}`;
     const qrImage = await QRCode.toDataURL(qrData);
 
     console.log('[DEBUG] QR generado exitosamente.');
@@ -196,9 +306,14 @@ controller.generarQR = async (req, res) => {
 
   console.log("Validando id de solicitud a detener", solicitudId);
 
-  const query = `UPDATE solicitudes 
-                 SET estado = 'labor detenida' 
-                 WHERE id = ? AND estado = 'en labor'`;
+  const query = ` 
+        UPDATE solicitudes s
+        JOIN acciones a ON s.id = a.solicitud_id
+        SET s.estado = 'labor detenida'
+        WHERE 
+            s.estado = 'en labor' 
+            OR (s.estado = 'aprobada' AND a.accion = 'aprobada')
+            AND s.id = ?;`;
 
   try {
     // Usamos await para esperar que la consulta a la base de datos se complete
@@ -227,7 +342,7 @@ controller.reanudarLabor = async (req, res) => {
   console.log("Validando id de solicitud para reanudar", solicitudId);
 
   const query = `UPDATE solicitudes 
-                 SET estado = 'en labor' 
+                 SET estado = 'aprobada' 
                  WHERE id = ? AND estado = 'labor detenida'`;
 
   try {

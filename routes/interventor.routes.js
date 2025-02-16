@@ -10,6 +10,7 @@ const requiredFunctions = {
   'GET /generar-qr/:id': 'generarQR',
   'PUT /solicitudes/:solicitudId/detener-labor': 'detenerLabor',
   'PUT /solicitudes/:solicitudId/reanudar-labor': 'reanudarLabor',
+  'GET /obtener-detalles-solicitud/:id': 'obtenerDetallesSolicitud', // Nueva ruta
 };
 
 // Verificar que las funciones están definidas en el controlador

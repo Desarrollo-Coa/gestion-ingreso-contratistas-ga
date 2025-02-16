@@ -1,526 +1,505 @@
 const jwt = require('jsonwebtoken');
-const connection = require('../db/db');  // Asegúrate de que este `connection` sea el correcto
+const connection = require('../db/db');
 const SECRET_KEY = process.env.JWT_SECRET || 'secreto';
 const fs = require('fs');
-const { createClient } = require('@supabase/supabase-js');
-
+const puppeteer = require('puppeteer');
+const handlebars = require('handlebars');
 const path = require('path');
 const archiver = require('archiver');
-const { format } = require('date-fns');  // Importamos la función 'format' de date-fns
-const SFTPClient = require('ssh2-sftp-client'); // Para manejar la conexión SFTP si es necesario
-const fsExtra = require('fs-extra');
-require('dotenv').config();  // Cargar variables de entorno desde el archivo .env
-// Configuración de Supabase
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-
+const { format } = require('date-fns');
+require('dotenv').config();
+const axios = require('axios');
+const AWS = require('aws-sdk'); 
+const pdf = require('html-pdf');
+ 
 
 const controller = {};
 
+const spacesEndpoint = new AWS.Endpoint('https://nyc3.digitaloceanspaces.com');
+const s3 = new AWS.S3({
+    endpoint: spacesEndpoint,
+    accessKeyId: process.env.DO_SPACES_KEY,
+    secretAccessKey: process.env.DO_SPACES_SECRET,
+    region: 'us-east-1',
+});
+
+
+
 // Vista de SST (con token y rol verificado)
+
+
 controller.vistaSst = async (req, res) => {
   const token = req.cookies.token;
 
-  // Verificación del token
-  console.log('Verificando si el token está presente en las cookies...');
   if (!token) {
-    console.log('Error: Token no encontrado en las cookies');
-    return res.redirect('/login');
+      return res.redirect('/login');
   }
 
   try {
-    // Verificar el token
-    console.log('Verificando la validez del token...');
-    const decoded = jwt.verify(token, SECRET_KEY);
-    console.log('Token verificado con éxito. Datos decodificados:');
+      const decoded = jwt.verify(token, SECRET_KEY);
+      const { role } = decoded;
 
-    const { role } = decoded;
+      if (role !== 'sst') {
+          return res.redirect('/login');
+      }
 
-    // Verificar si el rol es 'sst'
-    console.log('Verificando el rol del usuario...');
-    if (role !== 'sst') {
-      console.log(`Error: El rol del usuario no es 'sst'. Rol actual: ${role}`);
-      return res.redirect('/login');
-    }
+      // Obtener las solicitudes
+      const [solicitud] = await connection.execute('SELECT s.*, us.username AS interventor FROM solicitudes s LEFT JOIN users us ON us.id = s.interventor_id ORDER BY id DESC');
 
-    console.log('Rol verificado correctamente. Acceso permitido a la vista SST');
+      // Obtener las URLs de los documentos (si existen)
+      const [solicitud_url_download] = await connection.execute('SELECT * FROM sst_documentos WHERE solicitud_id IN (SELECT id FROM solicitudes)');
 
-    // Obtener las solicitudes pendientes de la base de datos
-    console.log('Obteniendo solicitudes pendientes de la base de datos...');
-    const [solicitud] = await connection.execute('SELECT s.*, us.username AS interventor FROM solicitudes s LEFT JOIN users us ON us.id = s.interventor_id ORDER BY id DESC');
-    
-    if (!solicitud.length) {
-      console.log('No hay solicitudes pendientes en la base de datos');
-    } else {
-      console.log('Solicitudes obtenidas:');
-    }
+      // Formatear fechas
+      solicitud.forEach(solici => {
+          solici.inicio_obra = format(new Date(solici.inicio_obra), 'dd/MM/yyyy');
+          solici.fin_obra = format(new Date(solici.fin_obra), 'dd/MM/yyyy');
+      });
 
-    // Formatear las fechas de las solicitudes (inicio_obra y fin_obra) al formato dd/MM/yyyy
-    solicitud.forEach(solici => {
-      solici.inicio_obra = format(new Date(solici.inicio_obra), 'dd/MM/yyyy');
-      solici.fin_obra = format(new Date(solici.fin_obra), 'dd/MM/yyyy');
-    });
-
-    console.log("Comprobando id de solicitudes");
-
-    // Renderizar la vista 'sst' con las solicitudes obtenidas
-    console.log('Renderizando la vista de SST...');
-    res.render('sst', { solicitud: solicitud, title: 'SST - Grupo Argos' });
+      // Pasar las URLs a la vista
+      res.render('sst', {
+          solicitud: solicitud,
+          title: 'SST - Grupo Argos',
+          solicitud_url_download: solicitud_url_download
+      });
 
   } catch (err) {
-    console.error('Error al verificar el token o al obtener solicitudes:', err);
-    res.redirect('/login'); // Redirige al login si ocurre cualquier error
+      console.error('Error al verificar el token o al obtener solicitudes:', err);
+      res.redirect('/login');
   }
 };
+
+// Función para subir un archivo a DigitalOcean Spaces
+async function uploadToSpaces(filePath, fileName) {
+  const fileContent = fs.readFileSync(filePath);
+
+  const params = {
+      Bucket: 'app-storage-contratistas',
+      Key: fileName,
+      Body: fileContent,
+      ACL: 'public-read' // Hacer el archivo público
+  };
+
+  try {
+      const data = await s3.upload(params).promise();
+      console.log("Resultado de la subida del zip: ", data)
+      
+      return data.Location; // Retorna la URL del archivo subido
+  } catch (error) {
+      console.error('Error al subir el archivo a DigitalOcean Spaces:', error);
+      return null;
+  }
+}
 
 
 // Negar solicitud (Mostrar formulario de comentarios)
 controller.mostrarNegarSolicitud = async (req, res) => {
-  const { id } = req.params;
-  try {
-    console.log('[RUTAS] Mostrando detalles para negar solicitud con ID:', id);
+    const { id } = req.params;
 
-    // Obtener los detalles de la solicitud para mostrar en el modal
-    const query = 'SELECT * FROM solicitudes WHERE id = ?';
-    const [solicitud] = await connection.execute(query, [id]);
+    try {
+        const query = 'SELECT * FROM solicitudes WHERE id = ?';
+        const [solicitud] = await connection.execute(query, [id]);
 
-    if (solicitud.length === 0) {
-      return res.status(404).send('Solicitud no encontrada');
+        if (solicitud.length === 0) {
+            return res.status(404).send('Solicitud no encontrada');
+        }
+
+        res.render('negar-solicitud', { solicitud: solicitud[0] });
+
+    } catch (error) {
+        console.error('Error al obtener detalles de la solicitud:', error);
+        res.status(500).send('Error al obtener detalles de la solicitud');
     }
-
-    // Renderizar vista con los detalles de la solicitud
-    res.render('negar-solicitud', { solicitud: solicitud[0] });
-
-  } catch (error) {
-    console.error('Error al obtener detalles de la solicitud:', error);
-    res.status(500).send('Error al obtener detalles de la solicitud');
-  }
 };
-
-
 
 // Aprobar solicitud
 controller.aprobarSolicitud = async (req, res) => {
-  const { id } = req.params;  // Obtener el ID de la solicitud desde los parámetros
-  const token = req.cookies.token;  // Obtener el token desde las cookies
+    const { id } = req.params;
+    const token = req.cookies.token;
 
-  // Verificar el token
-  jwt.verify(token, SECRET_KEY, async (err, decoded) => {
-    if (err) {
-      console.log('[CONTROLADOR] Error al verificar el token:', err);
-      return res.redirect('/login');
-    }
+    jwt.verify(token, SECRET_KEY, async (err, decoded) => {
+        if (err) {
+            return res.redirect('/login');
+        }
 
-    const { id: usuarioId } = decoded;  // Obtener el usuarioId desde el token decodificado
+        const { id: usuarioId } = decoded;
 
-    try {
-      console.log('[RUTAS] Aprobando solicitud con ID:', id);
+        try {
+            const query = 'UPDATE solicitudes SET estado = "aprobada" WHERE id = ?';
+            await connection.execute(query, [id]);
 
-      // Actualizar el estado de la solicitud a 'aprobada'
-      const query = 'UPDATE solicitudes SET estado = "aprobada" WHERE id = ?';
-      await connection.execute(query, [id]);
+            const accionQuery = 'INSERT INTO acciones (solicitud_id, usuario_id, accion) VALUES (?, ?, "pendiente")';
+            await connection.execute(accionQuery, [id, usuarioId]);
 
-      // Registrar la acción en la tabla de acciones (registrar acción de aprobación)
-      const accionQuery = 'INSERT INTO acciones (solicitud_id, usuario_id, accion) VALUES (?, ?, "pendiente")';
-      await connection.execute(accionQuery, [id, usuarioId]); // Usamos el usuarioId que está en el token
-
-      res.redirect('/vista-sst'); // Redirigir al listado de solicitudes
-    } catch (error) {
-      console.error('Error al aprobar la solicitud:', error);
-      res.status(500).send('Error al aprobar la solicitud');
-    }
-  });
+            res.redirect('/vista-sst');
+        } catch (error) {
+            console.error('Error al aprobar la solicitud:', error);
+            res.status(500).send('Error al aprobar la solicitud');
+        }
+    });
 };
 
 // Negar solicitud (Guardar el comentario y la acción)
 controller.negarSolicitud = async (req, res) => {
-  const { id } = req.params;  // Obtener el ID de la solicitud desde los parámetros
-  const { comentario } = req.body;  // Obtener el comentario del cuerpo de la solicitud
-  const token = req.cookies.token;  // Obtener el token desde las cookies
+    const { id } = req.params;
+    const { comentario } = req.body;
+    const token = req.cookies.token;
 
-  // Verificar el token
-  jwt.verify(token, SECRET_KEY, async (err, decoded) => {
-    if (err) {
-      console.log('[CONTROLADOR] Error al verificar el token:', err);
-      return res.redirect('/login');
-    }
+    jwt.verify(token, SECRET_KEY, async (err, decoded) => {
+        if (err) {
+            return res.redirect('/login');
+        }
 
-    const { id: usuarioId } = decoded;  // Obtener el usuarioId desde el token decodificado
+        const { id: usuarioId } = decoded;
 
+        try {
+            const query = 'UPDATE solicitudes SET estado = "negada" WHERE id = ?';
+            await connection.execute(query, [id]);
+
+            const accionQuery = 'INSERT INTO acciones (solicitud_id, usuario_id, accion, comentario) VALUES (?, ?, "negada", ?)';
+            await connection.execute(accionQuery, [id, usuarioId, comentario]);
+
+            res.redirect('/vista-sst');
+        } catch (error) {
+            console.error('Error al negar la solicitud:', error);
+            res.status(500).send('Error al negar la solicitud');
+        }
+    });
+};
+ 
+
+async function getImageBase64(imageUrl) {
     try {
-      console.log('[RUTAS] Negando solicitud con ID:', id);
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+        return `data:image/jpeg;base64,${Buffer.from(response.data, 'binary').toString('base64')}`;
+    } catch (error) {
+        console.error("❌ Error al convertir imagen a Base64:", error.message);
+        return null; // Retorna null si hay error
+    }
+}
+const sharp = require('sharp');
 
-      // Actualizar el estado de la solicitud a 'negada'
-      const query = 'UPDATE solicitudes SET estado = "negada" WHERE id = ?';
-      await connection.execute(query, [id]);
 
-      // Registrar la acción en la tabla de acciones (registrar acción de negación con comentario)
-      const accionQuery = 'INSERT INTO acciones (solicitud_id, usuario_id, accion, comentario) VALUES (?, ?, "negada", ?)';
-      await connection.execute(accionQuery, [id, usuarioId, comentario]); // Usamos el usuarioId que está en el token y el comentario
+async function convertWebPtoJpeg(url) {
+    try {
+        // Validar si la URL es nula, indefinida o no es una cadena válida
+        if (!url || typeof url !== 'string' || url.trim() === '') {
+            console.warn("⚠️ URL no válida o vacía. Omitiendo conversión.");
+            return null;
+        }
 
-      res.redirect('/vista-sst'); // Redirigir al listado de solicitudes
+        // Descargar la imagen WebP
+        const response = await axios.get(url, { responseType: 'arraybuffer' });
+
+        // Convertir WebP a JPEG usando sharp
+        const jpegBuffer = await sharp(response.data)
+            .toFormat('jpeg') // Convertir a JPEG
+            .toBuffer();
+
+        // Devolver la imagen en Base64
+        return `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
+    } catch (error) {
+        console.error("❌ Error al convertir la imagen:", error);
+        return null;
+    }
+}
+
+async function generateInformePDF({ solicitud, colaboradores, contractorName, interventorName }) {
+    try {
+        console.log("Prueba colaborador: ", colaboradores);
+
+        // Convertir las imágenes de los colaboradores a Base64
+        for (const colaborador of colaboradores) {
+            // Convertir la foto de perfil
+            if (colaborador.foto) {
+                colaborador.fotoBase64 = await convertWebPtoJpeg(colaborador.foto);
+            } else {
+                colaborador.fotoBase64 = null; // Si no hay foto, asignar null
+            }
+
+            // Convertir la foto de la cédula
+            if (colaborador.cedulaFoto) {
+                colaborador.cedulaFotoBase64 = await convertWebPtoJpeg(colaborador.cedulaFoto);
+            } else {
+                colaborador.cedulaFotoBase64 = null; // Si no hay cédula, asignar null
+            }
+        }
+
+        // Cargar la plantilla HTML
+        const templatePath = path.join(__dirname, '../src/views', 'informe-template.html');
+        const templateContent = fs.readFileSync(templatePath, 'utf8');
+        const template = handlebars.compile(templateContent);
+
+        // Convertir el logo a Base64
+        const logoPath = path.join(__dirname, '../public', 'img', 'logo-ga.jpg');
+        const logoBase64 = fs.readFileSync(logoPath, 'base64');
+
+        // Datos para la plantilla
+        const data = {
+            logo: `data:image/jpeg;base64,${logoBase64}`,
+            fecha: new Date().toLocaleDateString(),
+            solicitud,
+            colaboradores,
+            contractorName,
+            interventorName
+        };
+
+        // Generar el HTML
+        const html = template(data);
+
+        // Opciones para el PDF
+        const pdfOptions = {
+            format: 'Letter',
+            timeout: 60000, // Aumentar el tiempo de espera a 60 segundos
+            phantomArgs: ['--web-security=no', '--load-images=yes'] // Habilitar carga de imágenes
+        };
+
+        // Generar el PDF
+        return new Promise((resolve, reject) => {
+            pdf.create(html, pdfOptions).toBuffer((err, buffer) => {
+                if (err) {
+                    console.error("❌ Error al generar el PDF:", err);
+                    reject(err);
+                } else {
+                    resolve(buffer);
+                }
+            });
+        });
 
     } catch (error) {
-      console.error('Error al negar la solicitud:', error);
-      res.status(500).send('Error al negar la solicitud');
+        console.error("❌ Error al generar el informe PDF:", error);
+        throw error;
     }
-  });
-};
+} 
 
-// // Metodo FTTP Y SSH2 PARA DESCAGAR ARCHIVOS DE UN SERVIDOR Y COMPRIMIRLOS EN ZIP
-// async function downloadFromSFTP(remotePath, localPath) {
-//   const sftp = new SFTPClient();
-//   try {
-//     await sftp.connect({
-//       host: process.env.SFTP_HOST,
-//       port: process.env.SFTP_PORT,
-//       username: process.env.SFTP_USERNAME,
-//       password: process.env.SFTP_PASSWORD
-//     });
+// async function generateInformePDF({ solicitud, colaboradores, contractorName, interventorName }) {
+//     const templatePath = path.join(__dirname, '../src/views', 'informe-template.html');
+//     const templateContent = fs.readFileSync(templatePath, 'utf8');
+//     const template = handlebars.compile(templateContent);
 
-//     // Intentar descargar el archivo
-//     await sftp.get(remotePath, localPath);
-//     console.log('Archivo descargado exitosamente:', remotePath);
-//     return true;  // Indicamos que el archivo fue descargado correctamente
-//   } catch (err) {
-//     if (err.code === 2) {  // Error "No such file"
-//       console.log(`Archivo no encontrado: ${remotePath}`);
-//     } else {
-//       console.error('Error al descargar archivo:', err);
-//     }
-//     return false;  // Indicamos que hubo un error
-//   } finally {
-//     await sftp.end();
-//   }
+//     const logoPath = path.join(__dirname, '../public', 'img', 'logo-ga.jpg');
+//     const logoBase64 = fs.readFileSync(logoPath, 'base64');
+
+//     const data = {
+//         logoBase64: `data:image/png;base64,${logoBase64}`,
+//         fecha: new Date().toLocaleDateString(),
+//         solicitud,
+//         contractorName,
+//         interventorName,
+//         colaboradores
+//     };
+
+//     const html = template(data);
+//     const browser = await puppeteer.launch();
+//     const page = await browser.newPage();
+//     await page.setContent(html, { waitUntil: 'networkidle0' });
+
+//     const pdfBuffer = await page.pdf({ format: 'A4' });
+//     await browser.close();
+
+//     return pdfBuffer;
 // }
 
-// controller.descargarSolicitud = async (req, res) => {
-//   const { id } = req.params;
+async function downloadFromSpaces(fileUrl, localPath) {
+    if (!fileUrl) {
+        return false;
+    }
 
-//   try {
-//     console.log('[RUTA] Descargando documentos de la solicitud con ID:', id);
+    const fileName = fileUrl.split('/').pop();
+    if (!fileName) {
+        return false;
+    }
 
-//     // Obtener la solicitud de la base de datos
-//     const query = 'SELECT * FROM solicitudes WHERE id = ?';
-//     const [solicitud] = await connection.execute(query, [id]);
+    const params = {
+        Bucket: 'app-storage-contratistas',
+        Key: fileName,
+    };
 
-//     if (!solicitud || solicitud.length === 0) {
-//       return res.status(404).send('Solicitud no encontrada');
-//     }
-
-//     // Recuperar los documentos ARL y Seguridad Social
-//     const arlDocument = solicitud[0].arl_documento;
-//     const pasocialDocument = solicitud[0].pasocial_documento;
-
-//     if (!arlDocument || !pasocialDocument) {
-//       return res.status(400).send('Faltan documentos necesarios (ARL o Seguridad Social)');
-//     }
-
-//     // Inicializar la lista de documentos a incluir en el ZIP
-//     const documents = [
-//       { remotePath: `/home/administrator/gestion-ingreso-contratistas-ga/uploads/${arlDocument}`, name: `ARL_${id}${path.extname(arlDocument)}` },
-//       { remotePath: `/home/administrator/gestion-ingreso-contratistas-ga/uploads/${pasocialDocument}`, name: `Pasocial_${id}${path.extname(pasocialDocument)}` }
-//     ];
-
-//     // Obtener los colaboradores y sus fotos
-//     const queryColaboradores = 'SELECT cedula, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?';
-//     const [colaboradores] = await connection.execute(queryColaboradores, [id]);
-
-//     colaboradores.forEach(colaborador => {
-//       if (colaborador.foto) {
-//         const ext = path.extname(colaborador.foto);
-//         documents.push({ 
-//           remotePath: `/home/administrator/gestion-ingreso-contratistas-ga/uploads/${colaborador.foto}`, 
-//           name: `FOTOCC_${colaborador.cedula}${ext}` 
-//         });
-//       }
-//       if (colaborador.cedulaFoto) {
-//         const ext = path.extname(colaborador.cedulaFoto);
-//         documents.push({ 
-//           remotePath: `/home/administrator/gestion-ingreso-contratistas-ga/uploads/${colaborador.cedulaFoto}`, 
-//           name: `FOTOCB_${colaborador.cedula}${ext}` 
-//         });
-//       }
-//     });
-
-//     let downloadedCount = 0;
-//     const zip = archiver('zip', { zlib: { level: 9 } });
-//     // const zipPath = path.join(__dirname, '..', 'uploads', `solicitud_${id}.zip`);
-//     const zipPath = path.join('/tmp', `solicitud_${id}.zip`); // Cambia la ruta para usar /tmp
-//     const output = fs.createWriteStream(zipPath);
-    
-//     zip.pipe(output);
-
-//     // Descargar cada archivo del servidor SFTP y añadirlo al archivo ZIP
-//     for (let document of documents) {
-//       // const localPath = path.join(__dirname, '..', 'uploads', document.name);
-//       const localPath = path.join('/tmp', document.name); // Guardar en /tmp para AWS Lambda o en un directorio temporal
-//       const downloaded = await downloadFromSFTP(document.remotePath, localPath);
-//       if (downloaded) {
-//         zip.file(localPath, { name: document.name });
-//         downloadedCount++;
-//       }
-//     }
-
-//     // Finalizar el archivo ZIP
-//     zip.finalize();
-
-//     output.on('close', () => {
-//       console.log('[RUTA] Archivo ZIP creado, enviando al cliente...');
-
-//       if (downloadedCount > 0) {
-//         res.download(zipPath, (err) => {
-//           if (err) {
-//             console.error('Error al descargar el archivo ZIP:', err);
-//           }
-//            // Eliminar archivos temporales después de la descarga
-//       documents.forEach(document => {
-//         const localPath = path.join(__dirname, '..', 'uploads', document.name);
-//         if (fs.existsSync(localPath)) {  // Verificar si el archivo existe antes de eliminarlo
-//           fs.unlinkSync(localPath);
-//         }
-//       });
-//       if (fs.existsSync(zipPath)) {  // Asegurarse de que el ZIP también sea eliminado
-//         fs.unlinkSync(zipPath);
-//       }
-//       console.log('[RUTA] Archivos temporales eliminados.');
-//     });
-//   } else {
-//     res.status(404).send('No se encontraron archivos para descargar.');
-//   }
-// });
-
-//   } catch (error) {
-//     console.error('[RUTA] Error al generar el archivo ZIP:', error);
-//     res.status(500).send('Error al generar el archivo ZIP');
-//   }
-// };
-
-
-
-// Función para descargar un archivo desde Supabase y guardarlo localmente
-
-async function downloadFromSupabase(bucket, fileName, localPath) {
-  const { data, error } = await supabase
-    .storage
-    .from(bucket)
-    .download(fileName);
-
-  if (error) {
-    console.error(`Error al descargar el archivo ${fileName}:`, error);
-    return false;
-  }
-
-  // Convertir ArrayBuffer a Buffer antes de escribir en el archivo
-  const buffer = Buffer.from(await data.arrayBuffer());
-  
-  fs.writeFileSync(localPath, buffer);
-  console.log('Archivo descargado exitosamente:', fileName);
-  return true;
+    try {
+        const data = await s3.getObject(params).promise();
+        fs.writeFileSync(localPath, data.Body);
+        return true;
+    } catch (error) {
+        console.error(`Error al descargar el archivo ${fileName}:`, error);
+        return false;
+    }
 }
 
 
-
+// // Descargar solicitud y generar ZIP si no existe
 // controller.descargarSolicitud = async (req, res) => {
+     
 //   const { id } = req.params;
+//   const tempDir = path.join('/tmp', `solicitud_${id}`);
+//   const pdfPath = path.join(tempDir, `Informe_Solicitud_${id}.pdf`);
+//   const zipPath = path.join(tempDir, `Solicitud_${id}.zip`);
 
 //   try {
-//     console.log('[RUTA] Descargando documentos de la solicitud con ID:', id);
+//       // Verificar si ya existe una URL en la tabla sst_documentos
+//       const [existingDoc] = await connection.execute('SELECT * FROM sst_documentos WHERE solicitud_id = ?', [id]);
 
-//     // Obtener la solicitud de la base de datos
-//     const query = 'SELECT * FROM solicitudes WHERE id = ?';
-//     const [solicitud] = await connection.execute(query, [id]);
-
-//     if (!solicitud || solicitud.length === 0) {
-//       return res.status(404).send('Solicitud no encontrada');
-//     }
-
-//     // Recuperar los documentos ARL y Seguridad Social
-//     const arlDocument = solicitud[0].arl_documento;
-//     const pasocialDocument = solicitud[0].pasocial_documento;
-
-//     if (!arlDocument || !pasocialDocument) {
-//       return res.status(400).send('Faltan documentos necesarios (ARL o Seguridad Social)');
-//     }
-
-//     // Lista de documentos a incluir en el ZIP
-//     const documents = [
-//       { bucket: 'uploads', fileName: arlDocument, name: `ARL_${id}${path.extname(arlDocument)}` },
-//       { bucket: 'uploads', fileName: pasocialDocument, name: `Pasocial_${id}${path.extname(pasocialDocument)}` }
-//     ];
-
-//     // Obtener colaboradores y sus fotos
-//     const queryColaboradores = 'SELECT cedula, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?';
-//     const [colaboradores] = await connection.execute(queryColaboradores, [id]);
-
-//     colaboradores.forEach(colaborador => {
-//       if (colaborador.foto) {
-//         const ext = path.extname(colaborador.foto);
-//         documents.push({ bucket: 'uploads', fileName: colaborador.foto, name: `FOTOCB_${colaborador.cedula}${ext}` });
+//       if (existingDoc.length > 0) {
+//           // Si ya existe, redirigir a la URL almacenada
+//           return res.redirect(existingDoc[0].url);
 //       }
-//       if (colaborador.cedulaFoto) {
-//         const ext = path.extname(colaborador.cedulaFoto);
-//         documents.push({ bucket: 'uploads', fileName: colaborador.cedulaFoto, name: `FOTOCC_${colaborador.cedula}${ext}` });
-//       }
-//     });
 
-//     // Define la ruta temporal para el archivo ZIP
-//     const tempDir = process.env.VERCEL ? '/tmp' : path.join('C:', 'tmp');
-//     if (!fs.existsSync(tempDir)) {
+//       // Si no existe, generar el ZIP
 //       fs.mkdirSync(tempDir, { recursive: true });
-//     }
 
-//     const zipPath = path.join(tempDir, `solicitud_${id}.zip`);
-//     const output = fs.createWriteStream(zipPath);
-//     const zip = archiver('zip', { zlib: { level: 9 } });
-
-//     zip.pipe(output);
-
-//     // Descargar cada archivo desde Supabase y añadirlo al ZIP
-//     for (let document of documents) {
-//       const localPath = path.join(tempDir, document.name);
-//       const downloaded = await downloadFromSupabase(document.bucket, document.fileName, localPath);
-//       if (downloaded) {
-//         zip.file(localPath, { name: document.name });
+//       const [solicitud] = await connection.execute('SELECT * FROM solicitudes WHERE id = ?', [id]);
+//       if (!solicitud || solicitud.length === 0) {
+//           return res.status(404).send('Solicitud no encontrada');
 //       }
-//     }
 
-//     zip.finalize();
+//       const [colaboradores] = await connection.execute('SELECT cedula, nombre, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?', [id]);
+//       const [contratista] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].usuario_id]);
+//       const [interventor] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].interventor_id]);
 
-//     output.on('close', () => {
-//       console.log('[RUTA] Archivo ZIP creado, enviando al cliente...');
-//       res.download(zipPath, (err) => {
-//         if (err) {
-//           console.error('Error al enviar el archivo ZIP:', err);
-//         }
-
-//         // Limpiar archivos temporales
-//         documents.forEach(doc => {
-//           const localPath = path.join(tempDir, doc.name);
-//           if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
-//         });
-//         if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-
-//         console.log('[RUTA] Archivos temporales eliminados.');
-//       });
+//     //   for (const colaborador of colaboradores) {
+//     //       if (colaborador.foto) colaborador.fotoBase64 = await getImageBase64(colaborador.foto);
+//     //       if (colaborador.cedulaFoto) colaborador.cedulaFotoBase64 = await getImageBase64(colaborador.cedulaFoto);
+//     //   }
+      
+//       // Formatear fechas
+//       solicitud.forEach(solici => {
+//         solici.inicio_obra = format(new Date(solici.inicio_obra), 'dd/MM/yyyy');
+//         solici.fin_obra = format(new Date(solici.fin_obra), 'dd/MM/yyyy');
 //     });
+
+
+//       const pdfBuffer = await generateInformePDF({
+//           solicitud: solicitud[0],
+//           colaboradores,
+//           contractorName: contratista[0].username,
+//           interventorName: interventor[0].username,
+//       });
+
+//       fs.writeFileSync(pdfPath, pdfBuffer);
+
+//       const arlPath = path.join(tempDir, `ARL_${id}${path.extname(solicitud[0].arl_documento)}`);
+//       const pasocialPath = path.join(tempDir, `Pago_Seguridad_Social_${id}${path.extname(solicitud[0].pasocial_documento)}`);
+//       await downloadFromSpaces(solicitud[0].arl_documento, arlPath);
+//       await downloadFromSpaces(solicitud[0].pasocial_documento, pasocialPath);
+
+//       const output = fs.createWriteStream(zipPath);
+//       const archive = archiver('zip', { zlib: { level: 9 } });
+
+//       output.on('close', async () => {
+//           // Subir el archivo ZIP a DigitalOcean Spaces
+//           const zipFileName = `sst-documents/Solicitud_${id}.zip`;
+//           const zipUrl = await uploadToSpaces(zipPath, zipFileName);
+
+//           console.log("URL A INSERTAR GENERADA: ", zipUrl)
+
+//           if (zipUrl) {
+//               // Guardar la URL en la tabla sst_documentos
+//               await connection.execute(
+//                   'INSERT INTO sst_documentos (solicitud_id, url) VALUES (?, ?)',
+//                   [id, zipUrl]
+//               );
+
+//               // Redirigir a la URL del archivo
+//               res.redirect(zipUrl);
+//           } else {
+//               res.status(500).send('Error al subir el archivo ZIP');
+//           }
+
+//           // Limpiar el directorio temporal
+//           fs.rmSync(tempDir, { recursive: true, force: true });
+//       });
+
+//       archive.on('error', (err) => {
+//           throw err;
+//       });
+
+//       archive.pipe(output);
+//       archive.file(pdfPath, { name: `Informe_Solicitud_${id}.pdf` });
+//       archive.file(arlPath, { name: `ARL_${id}${path.extname(solicitud[0].arl_documento)}` });
+//       archive.file(pasocialPath, { name: `Pago_Seguridad_Social_${id}${path.extname(solicitud[0].pasocial_documento)}` });
+//       archive.finalize();
 
 //   } catch (error) {
-//     console.error('[RUTA] Error al generar el archivo ZIP:', error);
-//     res.status(500).send('Error al generar el archivo ZIP');
+//       console.error('[RUTA] Error al generar el archivo ZIP:', error);
+//       res.status(500).send('Error al generar el archivo ZIP');
+//       if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
 //   }
 // };
-
-
 controller.descargarSolicitud = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    console.log('[RUTA] Descargando documentos de la solicitud con ID:', id);
-
-    // Obtener la solicitud de la base de datos
-    const query = 'SELECT * FROM solicitudes WHERE id = ?';
-    const [solicitud] = await connection.execute(query, [id]);
-
-    if (!solicitud || solicitud.length === 0) {
-      return res.status(404).send('Solicitud no encontrada');
-    }
-
-    // Recuperar los documentos ARL y Seguridad Social
-    const arlDocument = solicitud[0].arl_documento;
-    const pasocialDocument = solicitud[0].pasocial_documento;
-
-    // Lista de documentos a incluir en el ZIP (solo si existen)
-    const documents = [];
-
-    if (arlDocument) {
-      documents.push({
-        bucket: 'uploads',
-        fileName: arlDocument,
-        name: `ARL_${id}${path.extname(arlDocument)}`
-      });
-    }
-
-    if (pasocialDocument) {
-      documents.push({
-        bucket: 'uploads',
-        fileName: pasocialDocument,
-        name: `Pasocial_${id}${path.extname(pasocialDocument)}`
-      });
-    }
-
-    // Obtener colaboradores y sus fotos (solo si existen)
-    const queryColaboradores = 'SELECT cedula, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?';
-    const [colaboradores] = await connection.execute(queryColaboradores, [id]);
-
-    colaboradores.forEach(colaborador => {
-      if (colaborador.foto) {
-        const ext = path.extname(colaborador.foto);
-        documents.push({
-          bucket: 'uploads',
-          fileName: colaborador.foto,
-          name: `FOTOCB_${colaborador.cedula}${ext}`
-        });
-      }
-      if (colaborador.cedulaFoto) {
-        const ext = path.extname(colaborador.cedulaFoto);
-        documents.push({
-          bucket: 'uploads',
-          fileName: colaborador.cedulaFoto,
-          name: `FOTOCC_${colaborador.cedula}${ext}`
-        });
-      }
-    });
-
-    // Define la ruta temporal para el archivo ZIP
-    const tempDir = process.env.VERCEL ? '/tmp' : path.join('C:', 'tmp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-
-    const zipPath = path.join(tempDir, `solicitud_${id}.zip`);
-    const output = fs.createWriteStream(zipPath);
-    const zip = archiver('zip', { zlib: { level: 9 } });
-
-    zip.pipe(output);
-
-    // Descargar cada archivo desde Supabase y añadirlo al ZIP
-    for (let document of documents) {
-      const localPath = path.join(tempDir, document.name);
-      const downloaded = await downloadFromSupabase(document.bucket, document.fileName, localPath);
-      if (downloaded) {
-        zip.file(localPath, { name: document.name });
-      }
-    }
-
-    zip.finalize();
-
-    output.on('close', () => {
-      console.log('[RUTA] Archivo ZIP creado, enviando al cliente...');
-      res.download(zipPath, (err) => {
-        if (err) {
-          console.error('Error al enviar el archivo ZIP:', err);
+    const { id } = req.params;
+    const tempDir = path.join('/tmp', `solicitud_${id}`);
+    const pdfPath = path.join(tempDir, `Informe_Solicitud_${id}.pdf`);
+    const zipPath = path.join(tempDir, `Solicitud_${id}.zip`);
+  
+    try {
+        const [existingDoc] = await connection.execute('SELECT * FROM sst_documentos WHERE solicitud_id = ?', [id]);
+        if (existingDoc.length > 0) {
+            return res.redirect(existingDoc[0].url);
         }
-
-        // Limpiar archivos temporales
-        documents.forEach(doc => {
-          const localPath = path.join(tempDir, doc.name);
-          if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+  
+        fs.mkdirSync(tempDir, { recursive: true });
+  
+        const [solicitud] = await connection.execute('SELECT * FROM solicitudes WHERE id = ?', [id]);
+        if (!solicitud || solicitud.length === 0) {
+            return res.status(404).send('Solicitud no encontrada');
+        }
+  
+        const [colaboradores] = await connection.execute('SELECT cedula, nombre, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?', [id]);
+        const [contratista] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].usuario_id]);
+        const [interventor] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].interventor_id]);
+  
+        solicitud.forEach(solici => {
+            solici.inicio_obra = format(new Date(solici.inicio_obra), 'dd/MM/yyyy');
+            solici.fin_obra = format(new Date(solici.fin_obra), 'dd/MM/yyyy');
         });
-        if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-
-        console.log('[RUTA] Archivos temporales eliminados.');
-      });
-    });
-
-  } catch (error) {
-    console.error('[RUTA] Error al generar el archivo ZIP:', error);
-    res.status(500).send('Error al generar el archivo ZIP');
-  }
-};
-
-
-
+  
+        const pdfBuffer = await generateInformePDF({
+            solicitud: solicitud[0],
+            colaboradores,
+            contractorName: contratista[0].username,
+            interventorName: interventor[0].username,
+        });
+        fs.writeFileSync(pdfPath, pdfBuffer);
+  
+        const output = fs.createWriteStream(zipPath);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+  
+        output.on('close', async () => {
+            const zipFileName = `sst-documents/Solicitud_${id}.zip`;
+            const zipUrl = await uploadToSpaces(zipPath, zipFileName);
+            if (zipUrl) {
+                await connection.execute(
+                    'INSERT INTO sst_documentos (solicitud_id, url) VALUES (?, ?)',
+                    [id, zipUrl]
+                );
+                res.redirect(zipUrl);
+            } else {
+                res.status(500).send('Error al subir el archivo ZIP');
+            }
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        });
+  
+        archive.on('error', (err) => { throw err; });
+        archive.pipe(output);
+        archive.file(pdfPath, { name: `Informe_Solicitud_${id}.pdf` });
+  
+        if (solicitud[0].arl_documento) {
+            const arlPath = path.join(tempDir, `ARL_${id}${path.extname(solicitud[0].arl_documento)}`);
+            await downloadFromSpaces(solicitud[0].arl_documento, arlPath);
+            archive.file(arlPath, { name: `ARL_${id}${path.extname(solicitud[0].arl_documento)}` });
+        }
+  
+        if (solicitud[0].pasocial_documento) {
+            const pasocialPath = path.join(tempDir, `Pago_Seguridad_Social_${id}${path.extname(solicitud[0].pasocial_documento)}`);
+            await downloadFromSpaces(solicitud[0].pasocial_documento, pasocialPath);
+            archive.file(pasocialPath, { name: `Pago_Seguridad_Social_${id}${path.extname(solicitud[0].pasocial_documento)}` });
+        }
+        
+        archive.finalize();
+    } catch (error) {
+        console.error('[RUTA] Error al generar el archivo ZIP:', error);
+        res.status(500).send('Error al generar el archivo ZIP');
+        if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  };
+  
+ 
 module.exports = controller;

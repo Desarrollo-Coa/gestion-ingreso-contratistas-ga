@@ -47,39 +47,50 @@
         </thead>
         <tbody id="tablaSolicitudes">
           <% solicitud.forEach(solicitud => { %>
-            <tr class="solicitud-item" data-id="<%= solicitud.id %>">
-              <td><%= solicitud.id %></td>
-              <td><%= solicitud.empresa %></td>
-              <td><%= solicitud.nit %></td>
-              <td><%= solicitud.inicio_obra %></td>
-              <td><%= solicitud.fin_obra %></td>
-              <td><%= solicitud.dias_trabajo %></td>
-              <td><%= solicitud.lugar %></td>
-              <td><%= solicitud.labor %></td>
-              <td><%= solicitud.interventor %></td>
-
-              <td>
-                <a href="/descargar-solicitud/<%= solicitud.id %>" target="_blank" class="btn btn-info btn-sm">Descargar Documentos</a>
-              </td>
-              <td>
-                <% if (solicitud.estado === 'pendiente') { %>
-                  <!-- Botón para aprobar solicitud -->
-                  <form action="/aprobar-solicitud/<%= solicitud.id %>" method="POST" style="display:inline;">
-                    <button type="submit" class="btn btn-success btn-sm" id="aprobarBtn-<%= solicitud.id %>">Aprobar</button>
-                  </form>
-                  <!-- Botón para abrir el modal de negar solicitud -->
-                  <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#modalNegar" data-id="<%= solicitud.id %>" data-empresa="<%= solicitud.empresa %>" data-nit="<%= solicitud.nit %>">
-                    Negar
-                  </button>
-                <% } else { %>
-                  <span class="badge <%= ['negada'].includes(solicitud.estado) ? 'badge-danger' : 'badge-success' %>">
-                    <%= ['negada'].includes(solicitud.estado) ? 'Negada' : 'Aprobado' %>
-                  </span>
-                <% } %>
-              </td>
-            </tr>
+              <tr class="solicitud-item" data-id="<%= solicitud.id %>">
+                  <td><%= solicitud.id %></td>
+                  <td><%= solicitud.empresa %></td>
+                  <td><%= solicitud.nit %></td>
+                  <td><%= solicitud.inicio_obra %></td>
+                  <td><%= solicitud.fin_obra %></td>
+                  <td><%= solicitud.dias_trabajo %></td>
+                  <td><%= solicitud.lugar %></td>
+                  <td><%= solicitud.labor %></td>
+                  <td><%= solicitud.interventor %></td>
+      
+                  <!-- Columna para descargar/generar documentos -->
+                  <td>
+                      <% const doc = solicitud_url_download.find(d => d.solicitud_id === solicitud.id); %>
+                      <% if (doc) { %>
+                          <!-- Si existe la URL, mostrar botón de descarga -->
+                          <a href="<%= doc.url %>" target="_blank" class="btn btn-success btn-sm">Descargar Documentos</a>
+                      <% } else { %>
+                          <!-- Si no existe la URL, mostrar botón para generar documentos -->
+                          <a href="/descargar-solicitud/<%= solicitud.id %>" target="_blank" class="btn btn-info btn-sm">Generar Documentos</a>
+                      <% } %>
+                  </td>
+      
+                  <!-- Columna para aprobar/negar solicitud -->
+                  <td>
+                      <% if (solicitud.estado === 'pendiente') { %>
+                          <!-- Botón para aprobar solicitud -->
+                          <form action="/aprobar-solicitud/<%= solicitud.id %>" method="POST" style="display:inline;">
+                              <button type="submit" class="btn btn-success btn-sm" id="aprobarBtn-<%= solicitud.id %>">Aprobar</button>
+                          </form>
+                          <!-- Botón para abrir el modal de negar solicitud -->
+                          <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#modalNegar" data-id="<%= solicitud.id %>" data-empresa="<%= solicitud.empresa %>" data-nit="<%= solicitud.nit %>">
+                              Negar
+                          </button>
+                      <% } else { %>
+                          <!-- Mostrar estado de la solicitud -->
+                          <span class="badge <%= ['negada'].includes(solicitud.estado) ? 'badge-danger' : 'badge-success' %>">
+                              <%= ['negada'].includes(solicitud.estado) ? 'Negada' : 'Aprobado' %>
+                          </span>
+                      <% } %>
+                  </td>
+              </tr>
           <% }) %>
-        </tbody>
+      </tbody>
       </table>
     </div>
 

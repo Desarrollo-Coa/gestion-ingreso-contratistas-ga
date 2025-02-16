@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe solicitud Ingreso</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header img {
+            width: 100px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 18px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+        }
+        .section p {
+            margin: 5px 0;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .table th, .table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+        .table th {
+            background-color: #f2f2f2;
+        }
+        .table img {
+            width: 100px; /* Ancho fijo */
+            height: 100px; /* Alto fijo */
+            object-fit: cover; /* Ajuste de imagen sin deformación */
+            border: 1px solid #ccc; /* Opcional: marco para imágenes */
+            border-radius: 8px; /* Opcional: bordes redondeados */
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <!-- Logo en base64 -->
+        <img src="{{logo}}" alt="Logo">
+        <h1>Informe de Solicitud</h1>
+        <p>Sistema Gestor de Ingreso Contratistas</p>
+        <p>Documento generado el día: {{fecha}}</p>
+    </div>
+
+    <div class="section">
+        <h2>Detalles de la Solicitud</h2>
+        <p><strong>Empresa:</strong> {{solicitud.empresa}}</p>
+        <p><strong>NIT:</strong> {{solicitud.nit}}</p>
+        <p><strong>Lugar:</strong> {{solicitud.lugar}}</p>
+        <p><strong>Labor:</strong> {{solicitud.labor}}</p>
+        <p><strong>Contratista:</strong> {{contractorName}}</p>
+        <p><strong>Interventor:</strong> {{interventorName}}</p>
+        <p><strong>Fechas:</strong> {{solicitud.inicio_obra}} - {{solicitud.fin_obra}}</p>
+    </div>
+
+    <div class="section">
+        <h2>Colaboradores</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Cédula</th>
+                    <th>Nombre</th>
+                    <th>Fotos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each colaboradores}}
+                <tr>
+                    <td>{{cedula}}</td>
+                    <td>{{nombre}}</td>
+                    <td>
+                        <!-- Foto del colaborador desde URL -->
+                        {{#if foto}}
+                            <img src="{{fotoBase64}}" alt="Foto del colaborador">
+                        {{else}}
+                            ❌ Sin foto
+                        {{/if}}
+                        <br>
+                        <!-- Foto de la cédula desde URL -->
+                        {{#if cedulaFoto}}
+                            <img src="{{cedulaFotoBase64}}" alt="Foto de la cédula">
+                        {{else}}
+                            ❌ Sin cédula
+                        {{/if}}
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
