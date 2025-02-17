@@ -181,90 +181,25 @@ const sharp = require('sharp');
 
 async function convertWebPtoJpeg(url) {
     try {
-        if (!url || typeof url !== 'string' || !url.startsWith('http') || !url.includes('.')) {
-            console.warn("⚠️ URL inválida o sin extensión:", url);
+        // Validar si la URL es nula, indefinida o no es una cadena válida
+        if (!url || typeof url !== 'string' || url.trim() === '') {
+            console.warn("⚠️ URL no válida o vacía. Omitiendo conversión.");
             return null;
         }
 
+        // Descargar la imagen WebP
         const response = await axios.get(url, { responseType: 'arraybuffer' });
 
-        if (!response.data || response.data.length === 0) {
-            console.warn("⚠️ Imagen vacía o no encontrada en la URL:", url);
-            return null;
-        }
+        // Convertir WebP a JPEG usando sharp
+        const jpegBuffer = await sharp(response.data)
+            .toFormat('jpeg') // Convertir a JPEG
+            .toBuffer();
 
-        return await sharp(response.data).toFormat('jpeg').toBuffer();
+        // Devolver la imagen en Base64
+        return `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
     } catch (error) {
-        console.error("❌ Error al convertir la imagen:", error.message);
+        console.error("❌ Error al convertir la imagen:", error);
         return null;
-    }
-}
-
-
-
-async function generateInformeImage({ solicitud, colaboradores, contractorName, interventorName }) {
-    try {
-        console.log("Prueba colaborador: ", colaboradores);
-
-        // Convertir las imágenes de los colaboradores a Base64
-        for (const colaborador of colaboradores) {
-            // Convertir la foto de perfil
-            if (colaborador.foto) {
-                colaborador.fotoBase64 = await convertWebPtoJpeg(colaborador.foto);
-            } else {
-                colaborador.fotoBase64 = null; // Si no hay foto, asignar null
-            }
-
-            // Convertir la foto de la cédula
-            if (colaborador.cedulaFoto) {
-                colaborador.cedulaFotoBase64 = await convertWebPtoJpeg(colaborador.cedulaFoto);
-            } else {
-                colaborador.cedulaFotoBase64 = null; // Si no hay cédula, asignar null
-            }
-        }
-
-        // Cargar la plantilla HTML
-        const templatePath = path.join(__dirname, '../src/views', 'informe-template.html');
-        const templateContent = fs.readFileSync(templatePath, 'utf8');
-        const template = handlebars.compile(templateContent);
-
-        // Convertir el logo a Base64
-        const logoPath = path.join(__dirname, '../public', 'img', 'logo-ga.jpg');
-        const logoBase64 = fs.readFileSync(logoPath, 'base64');
-
-        // Datos para la plantilla
-        const data = {
-            logo: `data:image/jpeg;base64,${logoBase64}`,
-            fecha: new Date().toLocaleDateString(),
-            solicitud,
-            colaboradores,
-            contractorName,
-            interventorName
-        };
-
-        // Generar el HTML
-        const html = template(data);
-
-        // Iniciar Puppeteer y generar la imagen
-        const browser = await puppeteer.launch({
-            args: ['--no-sandbox', '--disable-setuid-sandbox'] // Necesario para entornos serverless
-        });
-        const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: 'networkidle0' });
-
-        // Configurar las dimensiones de la página
-        await page.setViewport({ width: 1200, height: 1600 });
-
-        // Capturar la imagen
-        const imageBuffer = await page.screenshot({ type: 'png', fullPage: true });
-
-        await browser.close();
-
-        return imageBuffer;
-
-    } catch (error) {
-        console.error("❌ Error al generar la imagen del informe:", error);
-        throw error;
     }
 }
 
@@ -488,92 +423,10 @@ async function downloadFromSpaces(fileUrl, localPath) {
 //       if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
 //   }
 // };
-
-
-
-// controller.descargarSolicitud = async (req, res) => {
-//     const { id } = req.params;
-//     const tempDir = path.join('/tmp', `solicitud_${id}`);
-//     const pdfPath = path.join(tempDir, `Informe_Solicitud_${id}.pdf`);
-//     const zipPath = path.join(tempDir, `Solicitud_${id}.zip`);
-  
-//     try {
-//         const [existingDoc] = await connection.execute('SELECT * FROM sst_documentos WHERE solicitud_id = ?', [id]);
-//         if (existingDoc.length > 0) {
-//             return res.redirect(existingDoc[0].url);
-//         }
-  
-//         fs.mkdirSync(tempDir, { recursive: true });
-  
-//         const [solicitud] = await connection.execute('SELECT * FROM solicitudes WHERE id = ?', [id]);
-//         if (!solicitud || solicitud.length === 0) {
-//             return res.status(404).send('Solicitud no encontrada');
-//         }
-  
-//         const [colaboradores] = await connection.execute('SELECT cedula, nombre, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?', [id]);
-//         const [contratista] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].usuario_id]);
-//         const [interventor] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].interventor_id]);
-  
-//         solicitud.forEach(solici => {
-//             solici.inicio_obra = format(new Date(solici.inicio_obra), 'dd/MM/yyyy');
-//             solici.fin_obra = format(new Date(solici.fin_obra), 'dd/MM/yyyy');
-//         });
-  
-//         const pdfBuffer = await generateInformePDF({
-//             solicitud: solicitud[0],
-//             colaboradores,
-//             contractorName: contratista[0].username,
-//             interventorName: interventor[0].username,
-//         });
-//         fs.writeFileSync(pdfPath, pdfBuffer);
-  
-//         const output = fs.createWriteStream(zipPath);
-//         const archive = archiver('zip', { zlib: { level: 9 } });
-  
-//         output.on('close', async () => {
-//             const zipFileName = `sst-documents/Solicitud_${id}.zip`;
-//             const zipUrl = await uploadToSpaces(zipPath, zipFileName);
-//             if (zipUrl) {
-//                 await connection.execute(
-//                     'INSERT INTO sst_documentos (solicitud_id, url) VALUES (?, ?)',
-//                     [id, zipUrl]
-//                 );
-//                 res.redirect(zipUrl);
-//             } else {
-//                 res.status(500).send('Error al subir el archivo ZIP');
-//             }
-//             fs.rmSync(tempDir, { recursive: true, force: true });
-//         });
-  
-//         archive.on('error', (err) => { throw err; });
-//         archive.pipe(output);
-//         archive.file(pdfPath, { name: `Informe_Solicitud_${id}.pdf` });
-  
-//         if (solicitud[0].arl_documento) {
-//             const arlPath = path.join(tempDir, `ARL_${id}${path.extname(solicitud[0].arl_documento)}`);
-//             await downloadFromSpaces(solicitud[0].arl_documento, arlPath);
-//             archive.file(arlPath, { name: `ARL_${id}${path.extname(solicitud[0].arl_documento)}` });
-//         }
-  
-//         if (solicitud[0].pasocial_documento) {
-//             const pasocialPath = path.join(tempDir, `Pago_Seguridad_Social_${id}${path.extname(solicitud[0].pasocial_documento)}`);
-//             await downloadFromSpaces(solicitud[0].pasocial_documento, pasocialPath);
-//             archive.file(pasocialPath, { name: `Pago_Seguridad_Social_${id}${path.extname(solicitud[0].pasocial_documento)}` });
-//         }
-        
-//         archive.finalize();
-//     } catch (error) {
-//         console.error('[RUTA] Error al generar el archivo ZIP:', error);
-//         res.status(500).send('Error al generar el archivo ZIP');
-//         if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
-//     }
-//   };
-
-
 controller.descargarSolicitud = async (req, res) => {
     const { id } = req.params;
     const tempDir = path.join('/tmp', `solicitud_${id}`);
-    const imagePath = path.join(tempDir, `Informe_Solicitud_${id}.png`);
+    const pdfPath = path.join(tempDir, `Informe_Solicitud_${id}.pdf`);
     const zipPath = path.join(tempDir, `Solicitud_${id}.zip`);
   
     try {
@@ -598,13 +451,13 @@ controller.descargarSolicitud = async (req, res) => {
             solici.fin_obra = format(new Date(solici.fin_obra), 'dd/MM/yyyy');
         });
   
-        const imageBuffer = await generateInformeImage({
+        const pdfBuffer = await generateInformePDF({
             solicitud: solicitud[0],
             colaboradores,
             contractorName: contratista[0].username,
             interventorName: interventor[0].username,
         });
-        fs.writeFileSync(imagePath, imageBuffer);
+        fs.writeFileSync(pdfPath, pdfBuffer);
   
         const output = fs.createWriteStream(zipPath);
         const archive = archiver('zip', { zlib: { level: 9 } });
@@ -626,7 +479,7 @@ controller.descargarSolicitud = async (req, res) => {
   
         archive.on('error', (err) => { throw err; });
         archive.pipe(output);
-        archive.file(imagePath, { name: `Informe_Solicitud_${id}.png` });
+        archive.file(pdfPath, { name: `Informe_Solicitud_${id}.pdf` });
   
         if (solicitud[0].arl_documento) {
             const arlPath = path.join(tempDir, `ARL_${id}${path.extname(solicitud[0].arl_documento)}`);
@@ -646,8 +499,7 @@ controller.descargarSolicitud = async (req, res) => {
         res.status(500).send('Error al generar el archivo ZIP');
         if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
     }
-};
-
+  };
   
  
 module.exports = controller;
