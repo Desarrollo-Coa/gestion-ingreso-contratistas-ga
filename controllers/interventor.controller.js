@@ -291,7 +291,7 @@ controller.generarQR = async (req, res) => {
     }
 
     // Generamos el código QR con el formato de URL solicitado
-    const qrData = `https://gestion-ingreso-contratistas-ga.vercel.app/vista-seguridad/${solicitudId}`;
+    const qrData = `gestion-ingreso-contratistas-v1.vercel.app/vista-seguridad/${solicitudId}`;
     const qrImage = await QRCode.toDataURL(qrData);
 
     console.log('[DEBUG] QR generado exitosamente.');
@@ -523,8 +523,6 @@ const obtenerHistorialGlobal = async () => {
   }
 };
 
-
-
 const obtenerHistorialRegistros = async (solicitudId) => {
   const query = `
     SELECT 
@@ -540,7 +538,7 @@ const obtenerHistorialRegistros = async (solicitudId) => {
 
   try {
     const [rows] = await connection.execute(query, [solicitudId]);
-    return rows; // Devuelve los datos en lugar de responder con JSON
+    return rows;  
   } catch (error) {
     console.error('[CONTROLADOR] Error al obtener el historial:', error);
     throw error;
