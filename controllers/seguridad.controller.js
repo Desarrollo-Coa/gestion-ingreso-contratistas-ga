@@ -389,10 +389,11 @@ controller.registrarSalida = async (req, res) => {
         if (decoded.role !== 'seguridad') return res.redirect('/login');
  
         const { role, id, username } = decoded;
-
-        const IdUser = id
+        const IdUser = id;
         
-        const { solicitudId, colaboradores, fecha, estado_actual, fechaMySQL } = req.body;
+        const { solicitudId, colaboradores, fecha, estado_actual } = req.body;
+        const fechaMySQL = moment().tz("America/Bogota").format("YYYY-MM-DD HH:mm:ss"); // Definir aquí fechaMySQL
+
         console.log("Cuerpo del registro: ", req.body);
 
         if (!solicitudId || !colaboradores || colaboradores.length === 0 || !fecha || !estado_actual) {
@@ -401,7 +402,7 @@ controller.registrarSalida = async (req, res) => {
         }
 
         console.log(`[CONTROLLER] Iniciando registro de salida para solicitud_id: ${solicitudId}`);
-          console.log(`[CONTROLLER] Fecha y hora de salida: ${fecha}`);
+        console.log(`[CONTROLLER] Fecha y hora de salida: ${fecha}`);
 
         for (const colaborador of colaboradores) {
             if (!colaborador.id) {
@@ -409,10 +410,10 @@ controller.registrarSalida = async (req, res) => {
                 continue;
             }
             console.log(`[CONTROLLER] Registrando salida para colaborador_id: ${colaborador.id}`);
-            
+
             const [result] = await connection.execute(
-                'INSERT INTO registros (colaborador_id, solicitud_id,  usuario_id, tipo, fecha_hora, estado_actual, created_at) VALUES (?, ?, "salida", ?, ?, ?)',
-                [colaborador.id, solicitudId, IdUser,  fecha, estado_actual, fechaMySQL]
+                'INSERT INTO registros (colaborador_id, solicitud_id, usuario_id, tipo, fecha_hora, estado_actual, created_at) VALUES (?, ?, ?, "salida", ?, ?, ?)',
+                [colaborador.id, solicitudId, IdUser, fecha, estado_actual, fechaMySQL]
             );
             console.log(`[CONTROLLER] Resultado de la inserción para colaborador_id ${colaborador.id}:`, result);
         }
@@ -424,5 +425,6 @@ controller.registrarSalida = async (req, res) => {
         res.status(500).json({ message: 'Error al registrar la salida', error });
     }
 };
+
 
 module.exports = controller; 
