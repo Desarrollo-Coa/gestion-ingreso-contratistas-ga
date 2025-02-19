@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
           const tableBody = document.getElementById('historialTableBody');
           tableBody.innerHTML = ''; // Limpiar el contenido anterior
-
+    
           data.forEach(registro => {
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -296,9 +296,20 @@ document.addEventListener('DOMContentLoaded', function () {
               <td>${registro.empresa}</td>
               <td>${registro.nit}</td>
               <td>${registro.tipo}</td>
-              <td>${new Date(registro.fecha_hora).toLocaleString()}</td>
+              <td>${new Intl.DateTimeFormat('es-CO', { 
+              year: 'numeric', 
+              month: '2-digit', 
+              day: '2-digit', 
+              hour: '2-digit', 
+              minute: '2-digit', 
+              second: '2-digit', 
+              hour12: false, 
+              timeZone: 'America/Bogota' 
+          }).format(new Date(registro.fecha_hora))}</td>
+ 
               <td>${registro.estado_actual}</td>
             `;
+            
             tableBody.appendChild(row);
           });
 
