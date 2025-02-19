@@ -367,18 +367,21 @@ controller.reanudarLabor = async (req, res) => {
   }
 };
 
-
 controller.obtenerHistorialRegistros = async (req, res) => {
   const { solicitudId } = req.params;
 
   const query = `
     SELECT 
       c.nombre AS nombre_colaborador,
+      u.empresa,
+      u.nit,
       r.tipo,
       r.fecha_hora,
       r.estado_actual
     FROM registros r
     JOIN colaboradores c ON r.colaborador_id = c.id
+    JOIN solicitudes s ON r.solicitud_id = s.id
+    JOIN users u ON s.usuario_id = u.id
     WHERE r.solicitud_id = ?
     ORDER BY r.fecha_hora DESC;
   `;
@@ -391,7 +394,7 @@ controller.obtenerHistorialRegistros = async (req, res) => {
     res.status(500).json({ message: 'Error al obtener el historial de registros' });
   }
 };
- 
+
 
 // Función para descargar el historial único en Excel
 controller.descargarExcelUnico = async (req, res) => {
@@ -455,6 +458,8 @@ controller.descargarExcelGlobal = async (req, res) => {
     // Definir las columnas
     worksheet.columns = [
       { header: 'Colaborador', key: 'colaborador', width: 30 },
+      { header: 'Empresa', key: 'empresa', width: 30 },
+      { header: 'NIT', key: 'nit', width: 20 },
       { header: 'Tipo', key: 'tipo', width: 15 },
       { header: 'Fecha y Hora', key: 'fecha_hora', width: 20 },
       { header: 'Estado', key: 'estado', width: 20 },
@@ -465,6 +470,8 @@ controller.descargarExcelGlobal = async (req, res) => {
     historial.forEach(registro => {
       worksheet.addRow({
         colaborador: registro.nombre_colaborador,
+        empresa: registro.empresa,
+        nit: registro.nit,
         tipo: registro.tipo,
         fecha_hora: new Date(registro.fecha_hora).toLocaleString(),
         estado: registro.estado_actual,
@@ -491,17 +498,20 @@ controller.descargarExcelGlobal = async (req, res) => {
   }
 };
 
-// Función para obtener el historial global
 const obtenerHistorialGlobal = async () => {
   const query = `
     SELECT 
       c.nombre AS nombre_colaborador,
+      u.empresa,
+      u.nit,
       r.tipo,
       r.fecha_hora,
       r.estado_actual,
       r.solicitud_id
     FROM registros r
     JOIN colaboradores c ON r.colaborador_id = c.id
+    JOIN solicitudes s ON r.solicitud_id = s.id
+    JOIN users u ON s.usuario_id = u.id
     ORDER BY r.fecha_hora DESC;
   `;
 
@@ -512,6 +522,8 @@ const obtenerHistorialGlobal = async () => {
     throw error;
   }
 };
+
+
 
 const obtenerHistorialRegistros = async (solicitudId) => {
   const query = `

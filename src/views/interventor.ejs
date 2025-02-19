@@ -166,6 +166,8 @@
             <thead>
               <tr>
                 <th>Colaborador</th>
+                <th>Empresa</th>
+                <th>NIT</th>
                 <th>Tipo</th>
                 <th>Fecha y Hora</th>
                 <th>Estado</th>
@@ -174,6 +176,7 @@
             <tbody id="historialTableBody">
               <!-- Aquí se llenará el historial dinámicamente -->
             </tbody>
+            
           </table>
         </div>
         <div class="modal-footer">
@@ -271,7 +274,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
   <script> 
-
 document.addEventListener('DOMContentLoaded', function () {
   const descargarUnicoExcel = document.getElementById('descargarUnicoExcel');
   const descargarGlobalExcel = document.getElementById('descargarGlobalExcel');
@@ -291,6 +293,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const row = document.createElement('tr');
             row.innerHTML = `
               <td>${registro.nombre_colaborador}</td>
+              <td>${registro.empresa}</td>
+              <td>${registro.nit}</td>
               <td>${registro.tipo}</td>
               <td>${new Date(registro.fecha_hora).toLocaleString()}</td>
               <td>${registro.estado_actual}</td>
@@ -320,7 +324,10 @@ document.addEventListener('DOMContentLoaded', function () {
     window.location.href = '/descargar-excel/global';
   });
 });
-  document.addEventListener('DOMContentLoaded', function () {
+
+
+
+document.addEventListener('DOMContentLoaded', function () {
   // Evento para abrir el modal de detalles de la solicitud
   const verDetallesBtns = document.querySelectorAll('[id^="verDETALLES-"]');
   verDetallesBtns.forEach(btn => {
