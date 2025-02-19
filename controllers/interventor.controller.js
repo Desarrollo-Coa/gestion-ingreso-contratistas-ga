@@ -291,7 +291,7 @@ controller.generarQR = async (req, res) => {
     }
 
     // Generamos el código QR con el formato de URL solicitado
-   const qrData = `https://gestion-ingreso-contratistas-ga.vercel.app/vista-seguridad/${solicitudId}`;
+    const qrData = `https://gestion-ingreso-contratistas-ga.vercel.app/vista-seguridad/${solicitudId}`;
     const qrImage = await QRCode.toDataURL(qrData);
 
     console.log('[DEBUG] QR generado exitosamente.');
@@ -367,6 +367,7 @@ controller.reanudarLabor = async (req, res) => {
   }
 };
 
+
 controller.obtenerHistorialRegistros = async (req, res) => {
   const { solicitudId } = req.params;
 
@@ -376,7 +377,7 @@ controller.obtenerHistorialRegistros = async (req, res) => {
       u.empresa,
       u.nit,
       r.tipo,
-      r.fecha_hora,
+      DATE_FORMAT(r.fecha_hora, '%Y-%m-%d %H:%i:%s') AS fecha_hora,
       r.estado_actual
     FROM registros r
     JOIN colaboradores c ON r.colaborador_id = c.id
