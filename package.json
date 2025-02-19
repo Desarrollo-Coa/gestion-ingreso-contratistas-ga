@@ -20,6 +20,7 @@
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
     "env": "^0.0.2",
+    "exceljs": "^4.4.0",
     "express": "^4.21.1",
     "express-handlebars": "^8.0.1",
     "fs": "^0.0.1-security",
@@ -28,6 +29,7 @@
     "handlebars": "^4.7.8",
     "html-pdf": "^3.0.1",
     "jsonwebtoken": "^9.0.2",
+    "moment-timezone": "^0.5.47",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.5",
     "node-fetch": "^3.3.2",
@@ -44,6 +46,6 @@
   "engines": {
     "node": ">=14.0.0"
   },
-  "author": "Tu Nombre",
+  "author": "Carlos Muñoz",
   "license": "ISC"
 }

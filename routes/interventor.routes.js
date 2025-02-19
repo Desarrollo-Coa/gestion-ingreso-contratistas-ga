@@ -1,7 +1,13 @@
 const express = require('express');
 const controller = require('../controllers/interventor.controller');
-
 const router = express.Router();
+
+// Rutas existentes
+router.get('/obtener-historial/:solicitudId', controller.obtenerHistorialRegistros);
+
+// Nuevas rutas para descargar Excel
+router.get('/descargar-excel/unico/:solicitudId', controller.descargarExcelUnico);
+router.get('/descargar-excel/global', controller.descargarExcelGlobal);
 
 // Validar funciones necesarias del controlador
 const requiredFunctions = {
@@ -10,7 +16,9 @@ const requiredFunctions = {
   'GET /generar-qr/:id': 'generarQR',
   'PUT /solicitudes/:solicitudId/detener-labor': 'detenerLabor',
   'PUT /solicitudes/:solicitudId/reanudar-labor': 'reanudarLabor',
-  'GET /obtener-detalles-solicitud/:id': 'obtenerDetallesSolicitud', // Nueva ruta
+  'GET /obtener-detalles-solicitud/:id': 'obtenerDetallesSolicitud',
+  'GET /descargar-excel/unico/:solicitudId': 'descargarExcelUnico', // Nueva ruta
+  'GET /descargar-excel/global': 'descargarExcelGlobal', // Nueva ruta
 };
 
 // Verificar que las funciones están definidas en el controlador
@@ -35,7 +43,7 @@ const handleRoute = (method, path, handlerName) => {
 
 // Registrar las rutas dinámicamente
 Object.entries(requiredFunctions).forEach(([route, funcName]) => {
-  const [method, path] = route.split(' '); // Ejemplo: 'GET /vista-interventor' -> method='GET', path='/vista-interventor'
+  const [method, path] = route.split(' ');
   handleRoute(method, path, funcName);
 });
 

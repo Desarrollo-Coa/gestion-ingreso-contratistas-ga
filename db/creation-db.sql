@@ -112,3 +112,17 @@ CREATE TABLE IF NOT EXISTS sst_documentos (
     fecha_de_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Fecha en que se subió el archivo
     FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS registros (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    colaborador_id INT NOT NULL,
+    solicitud_id INT NOT NULL,
+    usuario_id INT NOT NULL,  -- Usuario que realizó el registro
+    tipo ENUM('entrada', 'salida') NOT NULL,  -- Indica si es entrada o salida
+    fecha_hora DATETIME NOT NULL,            -- Fecha y hora proporcionada en la solicitud
+    estado_actual VARCHAR(50) NOT NULL,      -- Estado de la solicitud en el momento del registro
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Hora exacta en que se registró el ingreso/salida
+    FOREIGN KEY (colaborador_id) REFERENCES colaboradores(id) ON DELETE CASCADE,
+    FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE  -- Relación con la tabla users
+);

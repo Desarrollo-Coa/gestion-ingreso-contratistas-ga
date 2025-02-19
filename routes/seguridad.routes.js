@@ -54,7 +54,27 @@ router.put('/api/solicitudes/:id/registrar-ingreso', async (req, res) => {
     }
 });
 
+// Ruta para registrar entrada
+router.post('/api/solicitudes/:id/registrar-entrada', async (req, res) => {
+  try {
+      console.log('[RUTAS] Registrando entrada para la solicitud...');
+      await controller.registrarEntrada(req, res);
+  } catch (err) {
+      console.error('[RUTAS] Error al registrar entrada:', err);
+      res.status(500).send('Error al registrar entrada');
+  }
+});
 
+// Ruta para registrar salida
+router.post('/api/solicitudes/:id/registrar-salida', async (req, res) => {
+  try {
+      console.log('[RUTAS] Registrando salida para la solicitud...');
+      await controller.registrarSalida(req, res);
+  } catch (err) {
+      console.error('[RUTAS] Error al registrar salida:', err);
+      res.status(500).send('Error al registrar salida');
+  }
+});
 
 
   router.get('/vista-seguridad/:id', controller.qrAccesosModal);

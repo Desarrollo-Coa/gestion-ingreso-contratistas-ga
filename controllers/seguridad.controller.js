@@ -124,7 +124,7 @@ controller.getSolicitudDetalles = async (req, res) => {
 
         // Obtener colaboradores asociados a la solicitud
         const [colaboradores] = await connection.execute(
-            'SELECT nombre, cedula, foto FROM colaboradores WHERE solicitud_id = ?',
+            'SELECT id, nombre, cedula, foto FROM colaboradores WHERE solicitud_id = ?',
             [id]
         );
 
@@ -245,7 +245,7 @@ controller.qrAccesosModal = async (req, res) => {
 
         // Obtener colaboradores asociados a la solicitud
         const [colaboradores] = await connection.execute(
-            'SELECT nombre, cedula, foto FROM colaboradores WHERE solicitud_id = ?',
+            'SELECT id, nombre, cedula, foto FROM colaboradores WHERE solicitud_id = ?',
             [idS]
         );
 
@@ -322,5 +322,107 @@ controller.qrAccesosModal = async (req, res) => {
 };
 
 
+
+
+
+const moment = require('moment-timezone');
+const fechaMySQL = moment().tz("America/Bogota").format("YYYY-MM-DD HH:mm:ss");
+
+ 
+controller.registrarEntrada = async (req, res) => {
+    try {
+        const token = req.cookies.token;
+
+        if (!token) {
+            return res.redirect('/login');
+        }
+
+        const decoded = jwt.verify(token, SECRET_KEY);
+        if (decoded.role !== 'seguridad') return res.redirect('/login');
+ 
+        const { role, id, username } = decoded;
+
+        const IdUser = id
+
+        const { solicitudId, colaboradores, fecha, estado_actual } = req.body;
+        console.log("Cuerpo del registro: ", req.body);
+
+        if (!solicitudId || !colaboradores || colaboradores.length === 0 || !fecha || !estado_actual) {
+            console.log('[CONTROLLER] Datos incompletos en la solicitud.');
+            return res.status(400).json({ message: 'Datos incompletos en la solicitud.' });
+        }
+
+        console.log(`[CONTROLLER] Iniciando registro de entrada para solicitud_id: ${solicitudId}`);
+        console.log(`[CONTROLLER] Fecha y hora de entrada: ${fecha}`);
+
+        for (const colaborador of colaboradores) {
+            if (!colaborador.id) {
+                console.log('[CONTROLLER] ID del colaborador inválido.');
+                continue;
+            }
+            console.log(`[CONTROLLER] Registrando entrada para colaborador_id: ${colaborador.id}`);
+            
+            const [result] = await connection.execute(
+                'INSERT INTO registros (colaborador_id, solicitud_id,usuario_id, tipo, fecha_hora, estado_actual, created_at) VALUES (?, ?, ?, "entrada", ?,?,?)',
+                [colaborador.id, solicitudId, IdUser, fecha, estado_actual, fechaMySQL]
+            );
+            console.log(`[CONTROLLER] Resultado de la inserción para colaborador_id ${colaborador.id}:`, result);
+        }
+        
+        console.log('[CONTROLLER] Entradas registradas correctamente');
+        res.status(200).json({ message: 'Entrada registrada correctamente' });
+    } catch (error) {
+        console.error('[CONTROLLER] Error al registrar entrada:', error);
+        res.status(500).json({ message: 'Error al registrar la entrada', error });
+    }
+};
+
+controller.registrarSalida = async (req, res) => {
+    try {
+        const token = req.cookies.token;
+
+        if (!token) {
+            return res.redirect('/login');
+        }
+        
+        const decoded = jwt.verify(token, SECRET_KEY);
+        if (decoded.role !== 'seguridad') return res.redirect('/login');
+ 
+        const { role, id, username } = decoded;
+
+        const IdUser = id
+        
+        const { solicitudId, colaboradores, fecha, estado_actual, fechaMySQL } = req.body;
+        console.log("Cuerpo del registro: ", req.body);
+
+        if (!solicitudId || !colaboradores || colaboradores.length === 0 || !fecha || !estado_actual) {
+            console.log('[CONTROLLER] Datos incompletos en la solicitud.');
+            return res.status(400).json({ message: 'Datos incompletos en la solicitud.' });
+        }
+
+        console.log(`[CONTROLLER] Iniciando registro de salida para solicitud_id: ${solicitudId}`);
+          console.log(`[CONTROLLER] Fecha y hora de salida: ${fecha}`);
+
+        for (const colaborador of colaboradores) {
+            if (!colaborador.id) {
+                console.log('[CONTROLLER] ID del colaborador inválido.');
+                continue;
+            }
+            console.log(`[CONTROLLER] Registrando salida para colaborador_id: ${colaborador.id}`);
+            
+            const [result] = await connection.execute(
+                'INSERT INTO registros (colaborador_id, solicitud_id,  usuario_id, tipo, fecha_hora, estado_actual, created_at) VALUES (?, ?, "salida", ?, ?, ?)',
+                [colaborador.id, solicitudId, IdUser,  fecha, estado_actual, fechaMySQL]
+            );
+            console.log(`[CONTROLLER] Resultado de la inserción para colaborador_id ${colaborador.id}:`, result);
+        }
+        
+        console.log('[CONTROLLER] Salidas registradas correctamente');
+        res.status(200).json({ message: 'Salida registrada correctamente' });
+    } catch (error) {
+        console.error('[CONTROLLER] Error al registrar salida:', error);
+        res.status(500).json({ message: 'Error al registrar la salida', error });
+    }
+};
 
 module.exports = controller; 

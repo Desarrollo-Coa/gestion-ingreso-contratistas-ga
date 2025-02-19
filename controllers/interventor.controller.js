@@ -1,4 +1,8 @@
 const jwt = require('jsonwebtoken');
+
+
+const ExcelJS = require('exceljs');
+
 const connection = require('../db/db');  // Asegúrate de que este connection sea el correcto
 const path = require('path');
 const fs = require('fs');
@@ -287,7 +291,7 @@ controller.generarQR = async (req, res) => {
     }
 
     // Generamos el código QR con el formato de URL solicitado
-    const qrData = `gestion-ingreso-contratistas-ga.vercel/vista-seguridad/${solicitudId}`;
+    const qrData = `gestion-ingreso-contratistas-v1.vercel.app/vista-seguridad/${solicitudId}`;
     const qrImage = await QRCode.toDataURL(qrData);
 
     console.log('[DEBUG] QR generado exitosamente.');
@@ -363,4 +367,173 @@ controller.reanudarLabor = async (req, res) => {
   }
 };
 
-module.exports = controller;
+
+controller.obtenerHistorialRegistros = async (req, res) => {
+  const { solicitudId } = req.params;
+
+  const query = `
+    SELECT 
+      c.nombre AS nombre_colaborador,
+      r.tipo,
+      r.fecha_hora,
+      r.estado_actual
+    FROM registros r
+    JOIN colaboradores c ON r.colaborador_id = c.id
+    WHERE r.solicitud_id = ?
+    ORDER BY r.fecha_hora DESC;
+  `;
+
+  try {
+    const [rows] = await connection.execute(query, [solicitudId]);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('[CONTROLADOR] Error al obtener el historial:', error);
+    res.status(500).json({ message: 'Error al obtener el historial de registros' });
+  }
+};
+ 
+
+// Función para descargar el historial único en Excel
+controller.descargarExcelUnico = async (req, res) => {
+  const { solicitudId } = req.params;
+
+  try {
+    // Obtener el historial de la solicitud
+    const historial = await obtenerHistorialRegistros(solicitudId);
+
+    // Crear un nuevo libro de Excel
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Historial Único');
+
+    // Definir las columnas
+    worksheet.columns = [
+      { header: 'Colaborador', key: 'colaborador', width: 30 },
+      { header: 'Tipo', key: 'tipo', width: 15 },
+      { header: 'Fecha y Hora', key: 'fecha_hora', width: 20 },
+      { header: 'Estado', key: 'estado', width: 20 },
+    ];
+
+    // Agregar los datos
+    historial.forEach(registro => {
+      worksheet.addRow({
+        colaborador: registro.nombre_colaborador,
+        tipo: registro.tipo,
+        fecha_hora: new Date(registro.fecha_hora).toLocaleString(),
+        estado: registro.estado_actual,
+      });
+    });
+
+    // Configurar la respuesta
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=historial_unico_${solicitudId}.xlsx`
+    );
+
+    // Escribir el archivo y enviarlo
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('[CONTROLADOR] Error al generar el Excel:', error);
+    res.status(500).json({ message: 'Error al generar el archivo Excel' });
+  }
+};
+
+// Función para descargar el historial global en Excel
+controller.descargarExcelGlobal = async (req, res) => {
+  try {
+    // Obtener el historial global
+    const historial = await obtenerHistorialGlobal();
+
+    // Crear un nuevo libro de Excel
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Historial Global');
+
+    // Definir las columnas
+    worksheet.columns = [
+      { header: 'Colaborador', key: 'colaborador', width: 30 },
+      { header: 'Tipo', key: 'tipo', width: 15 },
+      { header: 'Fecha y Hora', key: 'fecha_hora', width: 20 },
+      { header: 'Estado', key: 'estado', width: 20 },
+      { header: 'Solicitud ID', key: 'solicitud_id', width: 15 },
+    ];
+
+    // Agregar los datos
+    historial.forEach(registro => {
+      worksheet.addRow({
+        colaborador: registro.nombre_colaborador,
+        tipo: registro.tipo,
+        fecha_hora: new Date(registro.fecha_hora).toLocaleString(),
+        estado: registro.estado_actual,
+        solicitud_id: registro.solicitud_id,
+      });
+    });
+
+    // Configurar la respuesta
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=historial_global.xlsx'
+    );
+
+    // Escribir el archivo y enviarlo
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('[CONTROLADOR] Error al generar el Excel:', error);
+    res.status(500).json({ message: 'Error al generar el archivo Excel' });
+  }
+};
+
+// Función para obtener el historial global
+const obtenerHistorialGlobal = async () => {
+  const query = `
+    SELECT 
+      c.nombre AS nombre_colaborador,
+      r.tipo,
+      r.fecha_hora,
+      r.estado_actual,
+      r.solicitud_id
+    FROM registros r
+    JOIN colaboradores c ON r.colaborador_id = c.id
+    ORDER BY r.fecha_hora DESC;
+  `;
+
+  try {
+    const [rows] = await connection.execute(query);
+    return rows;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const obtenerHistorialRegistros = async (solicitudId) => {
+  const query = `
+    SELECT 
+      c.nombre AS nombre_colaborador,
+      r.tipo,
+      r.fecha_hora,
+      r.estado_actual
+    FROM registros r
+    JOIN colaboradores c ON r.colaborador_id = c.id
+    WHERE r.solicitud_id = ?
+    ORDER BY r.fecha_hora DESC;
+  `;
+
+  try {
+    const [rows] = await connection.execute(query, [solicitudId]);
+    return rows; // Devuelve los datos en lugar de responder con JSON
+  } catch (error) {
+    console.error('[CONTROLADOR] Error al obtener el historial:', error);
+    throw error;
+  }
+};
+ 
+
+module.exports = controller; 
