@@ -368,6 +368,8 @@ controller.reanudarLabor = async (req, res) => {
 };
 
 
+
+
 controller.obtenerHistorialRegistros = async (req, res) => {
   const { solicitudId } = req.params;
 
@@ -378,7 +380,9 @@ controller.obtenerHistorialRegistros = async (req, res) => {
       u.nit,
       r.tipo,
       DATE_FORMAT(r.fecha_hora, '%Y-%m-%d %H:%i:%s') AS fecha_hora,
-      r.estado_actual
+      r.estado_actual,
+      s.lugar,
+      DATE_FORMAT(r.created_at,  '%Y-%m-%d %H:%i:%s') AS registro_hecho
     FROM registros r
     JOIN colaboradores c ON r.colaborador_id = c.id
     JOIN solicitudes s ON r.solicitud_id = s.id
@@ -397,37 +401,43 @@ controller.obtenerHistorialRegistros = async (req, res) => {
 };
 
 
-// Función para descargar el historial único en Excel
+
+// Descargar historial único en Excel
 controller.descargarExcelUnico = async (req, res) => {
   const { solicitudId } = req.params;
 
   try {
-    // Obtener el historial de la solicitud
     const historial = await obtenerHistorialRegistros(solicitudId);
 
-    // Crear un nuevo libro de Excel
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Historial Único');
 
-    // Definir las columnas
     worksheet.columns = [
       { header: 'Colaborador', key: 'colaborador', width: 30 },
+      { header: 'Empresa', key: 'empresa', width: 30 },
+      { header: 'NIT', key: 'nit', width: 20 },
       { header: 'Tipo', key: 'tipo', width: 15 },
       { header: 'Fecha y Hora', key: 'fecha_hora', width: 20 },
       { header: 'Estado', key: 'estado', width: 20 },
+      { header: 'Lugar', key: 'lugar', width: 20 },
+      { header: 'Hora de registro', key: 'registro_hecho', width: 20 },
+      { header: 'Solicitud ID', key: 'solicitud_id', width: 15 },
     ];
 
-    // Agregar los datos
     historial.forEach(registro => {
       worksheet.addRow({
         colaborador: registro.nombre_colaborador,
-        tipo: registro.tipo,
-        fecha_hora: new Date(registro.fecha_hora).toLocaleString(),
+        empresa: registro.empresa,
+        nit: registro.nit,
+        tipo: registro.tipo, 
+        fecha_hora: new Date(registro.fecha_hora).toLocaleString(), 
         estado: registro.estado_actual,
+        lugar: registro.lugar,
+        registro_hecho: new Date(registro.registro_hecho).toLocaleString(), 
+        solicitud_id: registro.solicitud_id,
       });
     });
 
-    // Configurar la respuesta
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -437,7 +447,6 @@ controller.descargarExcelUnico = async (req, res) => {
       `attachment; filename=historial_unico_${solicitudId}.xlsx`
     );
 
-    // Escribir el archivo y enviarlo
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
@@ -464,11 +473,13 @@ controller.descargarExcelGlobal = async (req, res) => {
       { header: 'Tipo', key: 'tipo', width: 15 },
       { header: 'Fecha y Hora', key: 'fecha_hora', width: 20 },
       { header: 'Estado', key: 'estado', width: 20 },
+      { header: 'Lugar', key: 'lugar', width: 20 },
+      { header: 'Hora de registro', key: 'h_registro', width: 20 },
       { header: 'Solicitud ID', key: 'solicitud_id', width: 15 },
     ];
 
     // Agregar los datos
-    historial.forEach(registro => {
+    historial.forEach(registro => { 
       worksheet.addRow({
         colaborador: registro.nombre_colaborador,
         empresa: registro.empresa,
@@ -476,6 +487,8 @@ controller.descargarExcelGlobal = async (req, res) => {
         tipo: registro.tipo,
         fecha_hora: new Date(registro.fecha_hora).toLocaleString(),
         estado: registro.estado_actual,
+        lugar: registro.lugar,
+        h_registro: new Date(registro.registro_hecho).toLocaleString(), 
         solicitud_id: registro.solicitud_id,
       });
     });
@@ -499,6 +512,8 @@ controller.descargarExcelGlobal = async (req, res) => {
   }
 };
 
+
+
 const obtenerHistorialGlobal = async () => {
   const query = `
     SELECT 
@@ -506,7 +521,9 @@ const obtenerHistorialGlobal = async () => {
       u.empresa,
       u.nit,
       r.tipo,
-      r.fecha_hora,
+      r.fecha_hora, 
+      s.lugar,
+      r.created_at AS registro_hecho,
       r.estado_actual,
       r.solicitud_id
     FROM registros r
@@ -528,23 +545,31 @@ const obtenerHistorialRegistros = async (solicitudId) => {
   const query = `
     SELECT 
       c.nombre AS nombre_colaborador,
+      u.empresa,
+      u.nit,
       r.tipo,
       r.fecha_hora,
-      r.estado_actual
+      r.estado_actual,
+      s.lugar,
+      r.created_at AS registro_hecho,
+      r.solicitud_id
     FROM registros r
     JOIN colaboradores c ON r.colaborador_id = c.id
+    JOIN solicitudes s ON r.solicitud_id = s.id
+    JOIN users u ON s.usuario_id = u.id
     WHERE r.solicitud_id = ?
     ORDER BY r.fecha_hora DESC;
   `;
 
   try {
     const [rows] = await connection.execute(query, [solicitudId]);
-    return rows;  
+    return rows;
   } catch (error) {
     console.error('[CONTROLADOR] Error al obtener el historial:', error);
     throw error;
   }
 };
+ 
  
 
 module.exports = controller; 
