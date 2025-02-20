@@ -44,7 +44,7 @@ controller.vistaSst = async (req, res) => {
       }
 
       // Obtener las solicitudes
-      const [solicitud] = await connection.execute('SELECT s.*, us.username AS interventor FROM solicitudes s LEFT JOIN users us ON us.id = s.interventor_id ORDER BY id DESC');
+      const [solicitud] = await connection.execute('SELECT s.*, us.username AS interventor FROM solicitudes s LEFT JOIN users us ON us.id = s.interventor_id WHERE us.username != "COA" ORDER BY id DESC');
 
       // Obtener las URLs de los documentos (si existen)
       const [solicitud_url_download] = await connection.execute('SELECT * FROM sst_documentos WHERE solicitud_id IN (SELECT id FROM solicitudes)');

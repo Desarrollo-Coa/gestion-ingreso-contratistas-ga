@@ -94,6 +94,8 @@ controller.vistaContratista = async (req, res) => {
       res.status(500).send('Error al procesar la solicitud');
   }
 };
+
+
 controller.crearSolicitud = async (req, res) => {
   try {
       // Verifica el token
@@ -122,13 +124,13 @@ controller.crearSolicitud = async (req, res) => {
       // Aquí va la lógica para crear la solicitud en la base de datos
       const query = `
           INSERT INTO solicitudes (usuario_id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor,interventor_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
       `;
       const [result] = await connection.execute(query, [
           id, empresa, nit, inicio_obra, fin_obra, dias_trabajo, lugar, labor, interventor_id
       ]);
 
-      console.log('[CONTROLADOR] Solicitud creada con éxito', result);
+   
 
       // Aquí asociamos los colaboradores con la solicitud
       for (let i = 0; i < cedula.length; i++) {
@@ -145,7 +147,12 @@ controller.crearSolicitud = async (req, res) => {
           await connection.execute(queryColaborador, [
               result.insertId, cedulaColab, nombreColab, fotoColab, cedulaFotoColab
           ]);
+
+
+
       }
+
+      
 
       res.status(200).send('Solicitud creada correctamente');
   } catch (error) {

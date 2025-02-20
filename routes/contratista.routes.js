@@ -321,6 +321,42 @@ router.post('/generar-solicitud', upload.fields([
 
         console.log('[CONTROLADOR] Solicitud creada con éxito', result);
 
+
+        console.log('[CONTROLADOR] Solicitud creada con éxito', result);
+
+        const [resultUser] = await  connection.execute('SELECT username FROM users WHERE id = ?', [interventor_id])
+        console.log("VALIDANDO INTERVENTOR AL QUE VA LA SOLICITUD: ", resultUser[0]?.username);
+
+        // En caso de ir dirigido a interventor, Se debera aprobar el ingreso de sst automaticamente
+        if (resultUser[0]?.username === "COA") {
+            const conn = await connection.getConnection();
+            try {
+                // Iniciar transacción
+                await conn.beginTransaction();
+            
+                // Aprobar solicitud automáticamente
+                const queryAprobar = 'UPDATE solicitudes SET estado = "aprobada" WHERE id = ?';
+                await conn.execute(queryAprobar, [result.insertId]);
+            
+                // Insertar acción en la tabla acciones
+                const accionQuery = 'INSERT INTO acciones (solicitud_id, usuario_id, accion) VALUES (?, ?, "pendiente")';
+                await conn.execute(accionQuery, [result.insertId, id]);
+            
+                // Confirmar transacción
+                await conn.commit();
+                console.log("Solicitud aprobada automáticamente para COA y acción registrada.");
+            } catch (error) {
+                // Revertir en caso de error
+                await conn.rollback();
+                console.error("Error al aprobar automáticamente para COA:", error);
+            } finally {
+                // Liberar conexión
+                conn.release();
+            }
+            
+        }
+        
+
         // Aquí asociamos los colaboradores con la solicitud
         for (let i = 0; i < cedula.length; i++) {
             const cedulaColab = cedula[i];

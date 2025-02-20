@@ -28,7 +28,7 @@ controller.vistaInterventor = async (req, res) => {
     const decoded = jwt.verify(token, SECRET_KEY);
     console.log('[DEBUG] Token decodificado:');  // Depuración: Ver el token decodificado
 
-    const { role, id } = decoded;
+    const { role, id, username } = decoded;
 
     // Verificar si el rol es 'interventor'
     if (role !== 'interventor') {
@@ -146,6 +146,7 @@ controller.vistaInterventor = async (req, res) => {
     res.render('interventor', {
       acciones,
       title: 'Interventor - Grupo Argos',
+      username,
       format  // Pasamos la función format a la vista
     });
   } catch (err) {
@@ -399,8 +400,6 @@ controller.obtenerHistorialRegistros = async (req, res) => {
     res.status(500).json({ message: 'Error al obtener el historial de registros' });
   }
 };
-
-
 
 // Descargar historial único en Excel
 controller.descargarExcelUnico = async (req, res) => {

@@ -86,7 +86,15 @@
         <th>Acción</th> <!-- Solo una columna para manejar todas las acciones -->
         <th>Ver QR</th>
         <th>Detalles</th>
-        <th>H. de Ingresos</th>
+
+        
+               
+        <% if (username === "COA") { %>
+                
+           
+        <th>H. de Ingresos</th> 
+          <% }  else { %>  
+            <% }%> 
       </tr>
     </thead>
     <tbody>
@@ -133,9 +141,18 @@
        
             </td>
 
-            <td>
-              <button class="btn btn-info btn-sm ver-historial" data-solicitud-id="<%= accion.solicitud_id %>">Ver Historial</button>
-            </td>
+               
+              <% if (username === "COA") { %>
+                <td>
+                  <button class="btn btn-info btn-sm ver-historial" data-solicitud-id="<%= accion.solicitud_id %>">Ver Historial</button>
+                </td>
+
+                <% }  else { %> 
+                   
+       
+
+                  <% }%>
+         
 
           </tr>
         <% }); %>
