@@ -239,6 +239,9 @@ let modalData = null; // Define modalData globally
         if (modalData.advertencia == null) {
         // Configurar botón "Registrar Ingreso"
         const registrarIngresoBtn = document.getElementById('registrarIngresoBtn');
+        const registrarEntradaBtn = document.getElementById('registrarEntradaBtn');
+        const registrarSalidaBtn = document.getElementById('registrarSalidaBtn');
+        // Aquellos donde el boton estara desactivado para registrar salida y entrada
         const estadosNoPermitidos = [
             'en labor',
             'en labor - vencida',
@@ -252,6 +255,8 @@ let modalData = null; // Define modalData globally
             registrarIngresoBtn.disabled = true;
             registrarIngresoBtn.classList.add('btn-secondary');
             registrarIngresoBtn.textContent = 'No disponible';
+ 
+
         } else {
             console.log("Estado permitido: ", modalData.estado)
 

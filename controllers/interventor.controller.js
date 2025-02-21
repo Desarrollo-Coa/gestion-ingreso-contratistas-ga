@@ -10,15 +10,31 @@ const SECRET_KEY = process.env.JWT_SECRET || 'secreto';
 const { format } = require('date-fns');  // Importamos la función 'format' de date-fns
 const QRCode = require('qrcode');
 const handlebars = require('handlebars'); 
+const { concurrency } = require('sharp');
+
+ 
+const AWS = require('aws-sdk');  
+ 
+ 
+
+const spacesEndpoint = new AWS.Endpoint('https://nyc3.digitaloceanspaces.com');
+const s3 = new AWS.S3({
+    endpoint: spacesEndpoint,
+    accessKeyId: process.env.DO_SPACES_KEY,
+    secretAccessKey: process.env.DO_SPACES_SECRET,
+    region: 'us-east-1',
+});
+
+
 
 const controller = {}; 
  
+
 controller.vistaInterventor = async (req, res) => {
   const token = req.cookies.token;
 
-  console.log('[DEBUG] Token recibido:');  // Depuración: Ver el token recibido
+  console.log('[DEBUG] Token recibido:');
 
-  // Verificación del token
   if (!token) {
     console.log('[DEBUG] No se proporcionó token, redirigiendo al login.');
     return res.redirect('/login');
@@ -26,18 +42,23 @@ controller.vistaInterventor = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
-    console.log('[DEBUG] Token decodificado:');  // Depuración: Ver el token decodificado
-
+    console.log('[DEBUG] Token decodificado:');
     const { role, id, username } = decoded;
 
-    // Verificar si el rol es 'interventor'
     if (role !== 'interventor') {
       console.log('[DEBUG] El usuario no es interventor, redirigiendo al login.');
       return res.redirect('/login');
     }
 
-    // Obtener las acciones y solicitudes procesadas desde la base de datos
-    const [acciones] = await connection.execute(`
+    const [userInterventor] = await connection.execute('SELECT id, username FROM users WHERE id = ?', [id]);
+    const [lugares] = await connection.execute('SELECT nombre_lugar FROM lugares ORDER BY nombre_lugar ASC'); // Cargar lugares
+
+    let acciones;
+    let query;
+    let params = [];
+
+    // Base de la consulta SQL
+    const baseQuery = `
       SELECT 
         a.id AS accion_id,
         a.solicitud_id,
@@ -51,103 +72,49 @@ controller.vistaInterventor = async (req, res) => {
         s.empresa,
         s.nit,
         us.username AS interventor,
-
-
-        -- Determinar si la solicitud está vencida o no
         CASE
           WHEN DATE(s.fin_obra) < CURDATE() THEN 'Vencida'
           ELSE 'Vigente'
         END AS estado_vigencia,
-
-        -- Lógica para el botón de "Aprobar"
         CASE
           WHEN a.accion = 'pendiente' AND s.estado = 'aprobada' THEN 'Aprobar'
           ELSE 'No disponible'
         END AS puede_aprobar,
-
-        -- Lógica para el botón de "Detener Labor"
         CASE
           WHEN a.accion = 'aprobada' AND s.estado = 'en labor' THEN 'Detener Labor'
           ELSE 'No disponible'
         END AS puede_detener,
-
-        -- Lógica para el botón de "Ver QR"
         CASE
           WHEN a.accion = 'aprobada' AND s.estado IN ('aprobada', 'en labor') 
                AND DATE(s.fin_obra) >= CURDATE() THEN 'Ver QR'
           ELSE 'No disponible'
         END AS puede_ver_qr
-
       FROM acciones a
       JOIN solicitudes s ON a.solicitud_id = s.id
-      LEFT JOIN users us ON us.id  = s.interventor_id
+      LEFT JOIN users us ON us.id = s.interventor_id
       WHERE 
-        (a.accion IN ('aprobada', 'pendiente') OR s.estado IN ('en labor', 'labor detenida')) AND s.interventor_id = ?
-      ORDER BY a.id DESC;
-    `, [id]);
+        (a.accion IN ('aprobada', 'pendiente') OR s.estado IN ('en labor', 'labor detenida'))
+    `;
 
+    if (userInterventor[0].username === "COA") {
+      console.log("Entre en TRUE, USUARIO: ", userInterventor[0].username);
+      query = `${baseQuery} ORDER BY a.id DESC`;
+    } else {
+      console.log("Entre en FALSE, USUARIO: ", userInterventor[0].username);
+      query = `${baseQuery} AND s.interventor_id = ? ORDER BY a.id DESC`;
+      params.push(id);
+    }
 
-    // obtener las cedulas de las colaboradores que hacen parte de esa solicitud: 
-//     const [acciones] = await connection.execute(`
-//   SELECT 
-//     a.id AS accion_id,
-//     a.solicitud_id,
-//     a.accion,
-//     a.comentario,
-//     DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
-//     DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
-//     s.estado AS solicitud_estado,
-//     s.lugar,
-//     s.labor,
-//     s.empresa,
-//     s.nit,
-//     us.username AS interventor,
-//     GROUP_CONCAT(c.cedula SEPARATOR ', ') AS cedulas_colaboradores, -- Agregar cédulas de colaboradores
+    [acciones] = await connection.execute(query, params);
+    console.log('[DEBUG] Acciones obtenidas de la base de datos:');
 
-//     -- Determinar si la solicitud está vencida o no
-//     CASE
-//       WHEN DATE(s.fin_obra) < CURDATE() THEN 'Vencida'
-//       ELSE 'Vigente'
-//     END AS estado_vigencia,
-
-//     -- Lógica para el botón de "Aprobar"
-//     CASE
-//       WHEN a.accion = 'pendiente' AND s.estado = 'aprobada' THEN 'Aprobar'
-//       ELSE 'No disponible'
-//     END AS puede_aprobar,
-
-//     -- Lógica para el botón de "Detener Labor"
-//     CASE
-//       WHEN a.accion = 'aprobada' AND s.estado = 'en labor' THEN 'Detener Labor'
-//       ELSE 'No disponible'
-//     END AS puede_detener,
-
-//     -- Lógica para el botón de "Ver QR"
-//     CASE
-//       WHEN a.accion = 'aprobada' AND s.estado IN ('aprobada', 'en labor') 
-//            AND DATE(s.fin_obra) >= CURDATE() THEN 'Ver QR'
-//       ELSE 'No disponible'
-//     END AS puede_ver_qr
-
-//   FROM acciones a
-//   JOIN solicitudes s ON a.solicitud_id = s.id
-//   LEFT JOIN users us ON us.id = s.interventor_id
-//   LEFT JOIN colaboradores c ON c.solicitud_id = s.id -- Unir con la tabla de colaboradores
-//   WHERE 
-//     (a.accion IN ('aprobada', 'pendiente') OR s.estado IN ('en labor', 'labor detenida')) AND s.interventor_id = ?
-//   GROUP BY a.id, s.id -- Agrupar por acción y solicitud
-//   ORDER BY a.id DESC;
-// `, [id]);
-
-
-    console.log('[DEBUG] Acciones obtenidas de la base de datos:');  // Depuración: Ver las acciones obtenidas
-
-    // Pasar las acciones y otros datos necesarios a la vista
+    // Pasar las acciones, lugares y otros datos a la vista
     res.render('interventor', {
       acciones,
+      lugares: lugares.map(l => l.nombre_lugar), // Pasar solo los nombres de los lugares
       title: 'Interventor - Grupo Argos',
       username,
-      format  // Pasamos la función format a la vista
+      format
     });
   } catch (err) {
     console.error('[ERROR] Error al verificar el token o al obtener acciones:', err);
@@ -155,8 +122,195 @@ controller.vistaInterventor = async (req, res) => {
   }
 };
 
+controller.eliminarSolicitud = async (req, res) => {
+  const { solicitud_id } = req.body;
 
-// Función para convertir una imagen a Base64
+  if (!solicitud_id) {
+      return res.status(400).send('ID de solicitud no proporcionado');
+  }
+
+  const token = req.cookies.token;
+  if (!token) {
+      console.log('[CONTROLADOR] No se encontró el token');
+      return res.status(401).send('No se encontró el token');
+  }
+
+  try {
+      // Verify the token and ensure the user has permission
+      const decoded = jwt.verify(token, SECRET_KEY);
+      const { role } = decoded;
+
+      if (role !== 'interventor') {
+          return res.status(403).send('No tienes permiso para eliminar solicitudes');
+      }
+
+      // 1. Retrieve file paths from the solicitud
+      const [solicitud] = await connection.execute(
+          'SELECT arl_documento, pasocial_documento FROM solicitudes WHERE id = ?',
+          [solicitud_id]
+      );
+
+      if (!solicitud.length) {
+          return res.status(404).send('Solicitud no encontrada');
+      }
+
+      const { arl_documento, pasocial_documento } = solicitud[0];
+
+      // 2. Retrieve collaborator photos and ID photos
+      const [colaboradores] = await connection.execute(
+          'SELECT foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?',
+          [solicitud_id]
+      );
+
+      // 3. Retrieve SST documents (ZIP files)
+      const [sstDocumentos] = await connection.execute(
+          'SELECT url FROM sst_documentos WHERE solicitud_id = ?',
+          [solicitud_id]
+      );
+
+      // 4. Delete files from DigitalOcean Spaces
+      const deleteFromSpaces = async (fileUrl) => {
+          if (!fileUrl) return;
+
+          // Extract the key by removing the bucket URL prefix
+          const bucketUrlPrefix = `https://app-storage-contratistas.nyc3.digitaloceanspaces.com/`;
+          const fileKey = fileUrl.startsWith(bucketUrlPrefix) 
+              ? fileUrl.replace(bucketUrlPrefix, '') 
+              : fileUrl.split('/').pop(); // Fallback for simpler URLs
+
+          const params = {
+              Bucket: process.env.DO_SPACES_BUCKET, // Should be 'app-storage-contratistas'
+              Key: fileKey, // e.g., 'sst-documents/Solicitud_88.zip'
+          };
+
+          try {
+              await s3.deleteObject(params).promise();
+              console.log(`Archivo eliminado de Spaces: ${fileKey}`);
+          } catch (error) {
+              console.error(`Error al eliminar archivo de Spaces: ${fileKey}`, error);
+          }
+      };
+
+      // Delete ARL and Pasocial documents
+      if (arl_documento) await deleteFromSpaces(arl_documento);
+      if (pasocial_documento) await deleteFromSpaces(pasocial_documento);
+
+      // Delete collaborator photos and ID photos
+      for (const colaborador of colaboradores) {
+          if (colaborador.foto) await deleteFromSpaces(colaborador.foto);
+          if (colaborador.cedulaFoto) await deleteFromSpaces(colaborador.cedulaFoto);
+      }
+
+      // Delete SST documents (ZIP files)
+      for (const sstDoc of sstDocumentos) {
+          if (sstDoc.url) await deleteFromSpaces(sstDoc.url);
+      }
+
+      // 5. Delete the request from the database (cascades to colaboradores, acciones, sst_documentos, etc.)
+      await connection.execute('DELETE FROM solicitudes WHERE id = ?', [solicitud_id]);
+      console.log(`Solicitud ${solicitud_id} eliminada con éxito`);
+
+      res.status(200).send('Solicitud y archivos eliminados correctamente');
+  } catch (error) {
+      console.error('[CONTROLADOR] Error al eliminar la solicitud:', error);
+      res.status(500).send('Error al eliminar la solicitud');
+  }
+};
+
+controller.filtrarSolicitudes = async (req, res) => {
+  const token = req.cookies.token;
+
+  if (!token) {
+    return res.status(401).json({ message: 'No autorizado' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const { role, id } = decoded;
+
+    const [userInterventor] = await connection.execute('SELECT id, username FROM users WHERE id = ?', [id]);
+    const username = userInterventor[0].username; // Accede al username correctamente
+    
+    
+
+    if (role !== 'interventor') {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
+
+    const { id: filtroId, fechaInicio, fechaFin, nit, empresa, lugar } = req.body;
+
+    // Construir la consulta SQL dinámicamente
+    let query = `
+      SELECT 
+        a.id AS accion_id,
+        a.solicitud_id,
+        a.accion,
+        a.comentario,
+        DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
+        DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
+        s.estado AS solicitud_estado,
+        s.lugar,
+        s.labor,
+        s.empresa,
+        s.nit,
+        us.username AS interventor,
+        CASE
+          WHEN DATE(s.fin_obra) < CURDATE() THEN 'Vencida'
+          ELSE 'Vigente'
+        END AS estado_vigencia,
+        CASE
+          WHEN a.accion = 'pendiente' AND s.estado = 'aprobada' THEN 'Aprobar'
+          ELSE 'No disponible'
+        END AS puede_aprobar,
+        CASE
+          WHEN a.accion = 'aprobada' AND s.estado IN ('aprobada', 'en labor') 
+               AND DATE(s.fin_obra) >= CURDATE() THEN 'Ver QR'
+          ELSE 'No disponible'
+        END AS puede_ver_qr
+      FROM acciones a
+      JOIN solicitudes s ON a.solicitud_id = s.id
+      LEFT JOIN users us ON us.id = s.interventor_id
+      WHERE 
+        (a.accion IN ('aprobada', 'pendiente') OR s.estado IN ('en labor', 'labor detenida'))
+    `;
+    const params = [];
+
+    // Agregar filtros dinámicos
+    if (filtroId) {
+      query += ' AND a.solicitud_id = ?';
+      params.push(filtroId);
+    }
+    if (fechaInicio && fechaFin) {
+      query += ' AND s.inicio_obra >= ? AND s.fin_obra <= ?';
+      params.push(fechaInicio, fechaFin);
+    }
+    if (nit) {
+      query += ' AND s.nit LIKE ?';
+      params.push(`%${nit}%`);
+    }
+    if (empresa) {
+      query += ' AND s.empresa LIKE ?';
+      params.push(`%${empresa}%`);
+    }
+    if (lugar) {
+      query += ' AND s.lugar = ?';
+      params.push(lugar);
+    }
+    if (username !== "COA") {
+      query += ' AND s.interventor_id = ?';
+      params.push(id);
+    }
+
+    query += ' ORDER BY a.id DESC';
+
+    const [acciones] = await connection.execute(query, params);
+    res.json(acciones);
+  } catch (err) {
+    console.error('[ERROR] Error al filtrar solicitudes:', err);
+    res.status(500).json({ message: 'Error al filtrar solicitudes' });
+  }
+};
+
 async function getImageBase64(imagePath) {
   if (!imagePath) return null;
   const fullPath = path.join(__dirname, '../public', imagePath);

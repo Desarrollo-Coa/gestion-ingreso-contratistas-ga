@@ -4,7 +4,9 @@ const router = express.Router();
 
 // Rutas existentes
 router.get('/obtener-historial/:solicitudId', controller.obtenerHistorialRegistros);
+router.post('/filtrar-solicitudes', controller.filtrarSolicitudes);
 
+router.post('/eliminar-solicitud', controller.eliminarSolicitud);
 // Nuevas rutas para descargar Excel
 router.get('/descargar-excel/unico/:solicitudId', controller.descargarExcelUnico);
 router.get('/descargar-excel/global', controller.descargarExcelGlobal);
