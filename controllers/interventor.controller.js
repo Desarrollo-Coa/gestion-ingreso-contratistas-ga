@@ -67,6 +67,7 @@ controller.vistaInterventor = async (req, res) => {
         DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
         DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
         s.estado AS solicitud_estado,
+        a.accion AS solicitud_estado_interventor,
         s.lugar,
         s.labor,
         s.empresa,
@@ -216,101 +217,7 @@ controller.eliminarSolicitud = async (req, res) => {
       res.status(500).send('Error al eliminar la solicitud');
   }
 };
-
-controller.filtrarSolicitudes = async (req, res) => {
-  const token = req.cookies.token;
-
-  if (!token) {
-    return res.status(401).json({ message: 'No autorizado' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, SECRET_KEY);
-    const { role, id } = decoded;
-
-    const [userInterventor] = await connection.execute('SELECT id, username FROM users WHERE id = ?', [id]);
-    const username = userInterventor[0].username; // Accede al username correctamente
-    
-    
-
-    if (role !== 'interventor') {
-      return res.status(403).json({ message: 'Acceso denegado' });
-    }
-
-    const { id: filtroId, fechaInicio, fechaFin, nit, empresa, lugar } = req.body;
-
-    // Construir la consulta SQL dinámicamente
-    let query = `
-      SELECT 
-        a.id AS accion_id,
-        a.solicitud_id,
-        a.accion,
-        a.comentario,
-        DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
-        DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
-        s.estado AS solicitud_estado,
-        s.lugar,
-        s.labor,
-        s.empresa,
-        s.nit,
-        us.username AS interventor,
-        CASE
-          WHEN DATE(s.fin_obra) < CURDATE() THEN 'Vencida'
-          ELSE 'Vigente'
-        END AS estado_vigencia,
-        CASE
-          WHEN a.accion = 'pendiente' AND s.estado = 'aprobada' THEN 'Aprobar'
-          ELSE 'No disponible'
-        END AS puede_aprobar,
-        CASE
-          WHEN a.accion = 'aprobada' AND s.estado IN ('aprobada', 'en labor') 
-               AND DATE(s.fin_obra) >= CURDATE() THEN 'Ver QR'
-          ELSE 'No disponible'
-        END AS puede_ver_qr
-      FROM acciones a
-      JOIN solicitudes s ON a.solicitud_id = s.id
-      LEFT JOIN users us ON us.id = s.interventor_id
-      WHERE 
-        (a.accion IN ('aprobada', 'pendiente') OR s.estado IN ('en labor', 'labor detenida'))
-    `;
-    const params = [];
-
-    // Agregar filtros dinámicos
-    if (filtroId) {
-      query += ' AND a.solicitud_id = ?';
-      params.push(filtroId);
-    }
-    if (fechaInicio && fechaFin) {
-      query += ' AND s.inicio_obra >= ? AND s.fin_obra <= ?';
-      params.push(fechaInicio, fechaFin);
-    }
-    if (nit) {
-      query += ' AND s.nit LIKE ?';
-      params.push(`%${nit}%`);
-    }
-    if (empresa) {
-      query += ' AND s.empresa LIKE ?';
-      params.push(`%${empresa}%`);
-    }
-    if (lugar) {
-      query += ' AND s.lugar = ?';
-      params.push(lugar);
-    }
-    if (username !== "COA") {
-      query += ' AND s.interventor_id = ?';
-      params.push(id);
-    }
-
-    query += ' ORDER BY a.id DESC';
-
-    const [acciones] = await connection.execute(query, params);
-    res.json(acciones);
-  } catch (err) {
-    console.error('[ERROR] Error al filtrar solicitudes:', err);
-    res.status(500).json({ message: 'Error al filtrar solicitudes' });
-  }
-};
-
+ 
 async function getImageBase64(imagePath) {
   if (!imagePath) return null;
   const fullPath = path.join(__dirname, '../public', imagePath);
@@ -525,6 +432,8 @@ controller.reanudarLabor = async (req, res) => {
 
 
 
+
+
 controller.obtenerHistorialRegistros = async (req, res) => {
   const { solicitudId } = req.params;
 
@@ -555,7 +464,126 @@ controller.obtenerHistorialRegistros = async (req, res) => {
   }
 };
 
-// Descargar historial único en Excel
+controller.filtrarSolicitudes = async (req, res) => {
+  const token = req.cookies.token;
+
+  if (!token) {
+    return res.status(401).json({ message: 'No autorizado' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const { role, id } = decoded;
+
+    const [userInterventor] = await connection.execute('SELECT id, username FROM users WHERE id = ?', [id]);
+    const username = userInterventor[0].username;
+
+    if (role !== 'interventor') {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
+
+    const { id: filtroId, cedula, interventor, estado, fechaInicio, fechaFin, nit, empresa, lugar, vigencia } = req.body;
+
+    let query = `
+      SELECT DISTINCT
+        a.id AS accion_id,
+        a.solicitud_id,
+        a.accion,
+        a.comentario,
+        DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
+        DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
+        s.estado AS solicitud_estado,
+        a.accion AS solicitud_estado_interventor,
+        s.lugar,
+        s.labor,
+        s.empresa,
+        s.nit,
+        us.username AS interventor,
+        CASE
+          WHEN DATE(s.fin_obra) < CURDATE() THEN 'Vencida'
+          ELSE 'Vigente'
+        END AS estado_vigencia,
+        CASE
+          WHEN a.accion = 'pendiente' AND s.estado = 'aprobada' THEN 'Aprobar'
+          ELSE 'No disponible'
+        END AS puede_aprobar,
+        CASE
+          WHEN a.accion = 'aprobada' AND s.estado IN ('aprobada', 'en labor') 
+               AND DATE(s.fin_obra) >= CURDATE() THEN 'Ver QR'
+          ELSE 'No disponible'
+        END AS puede_ver_qr
+      FROM acciones a
+      JOIN solicitudes s ON a.solicitud_id = s.id
+      LEFT JOIN users us ON us.id = s.interventor_id
+      LEFT JOIN colaboradores c ON c.solicitud_id = s.id
+      WHERE 
+        (a.accion IN ('aprobada', 'pendiente', 'negada') OR s.estado IN ('en labor', 'labor detenida'))
+    `;
+    const params = [];
+
+    // Filtros dinámicos
+    if (filtroId) {
+      query += ' AND a.solicitud_id = ?';
+      params.push(filtroId);
+    }
+    if (cedula) {
+      query += ' AND c.cedula LIKE ?';
+      params.push(`%${cedula}%`);
+    }
+    if (interventor) {
+      query += ' AND us.username LIKE ?';
+      params.push(`%${interventor}%`);
+    }
+    if (estado) {
+      if (estado === 'Aprobado por SST') {
+        query += ' AND s.estado = "aprobada" AND a.accion = "pendiente"';
+      } else if (estado === 'Pendiente Ingreso') {
+        query += ' AND s.estado = "aprobada" AND a.accion = "aprobada"';
+      } else {
+        query += ' AND s.estado = ?';
+        params.push(estado);
+      }
+    }
+    if (fechaInicio) {
+      query += ' AND s.inicio_obra >= ?';
+      params.push(fechaInicio);
+    }
+    if (fechaFin) {
+      query += ' AND s.fin_obra <= ?';
+      params.push(fechaFin);
+    }
+    if (nit) {
+      query += ' AND s.nit LIKE ?';
+      params.push(`%${nit}%`);
+    }
+    if (empresa) {
+      query += ' AND s.empresa LIKE ?';
+      params.push(`%${empresa}%`);
+    }
+    if (lugar) {
+      query += ' AND s.lugar = ?';
+      params.push(lugar);
+    }
+    if (vigencia) {
+      query += ' AND (CASE WHEN DATE(s.fin_obra) < CURDATE() THEN "Vencida" ELSE "Vigente" END) = ?';
+      params.push(vigencia);
+    }
+    if (username !== "COA") {
+      query += ' AND s.interventor_id = ?';
+      params.push(id);
+    }
+
+    query += ' ORDER BY a.id DESC';
+
+    const [acciones] = await connection.execute(query, params);
+    res.json(acciones);
+  } catch (err) {
+    console.error('[ERROR] Error al filtrar solicitudes:', err);
+    res.status(500).json({ message: 'Error al filtrar solicitudes' });
+  }
+};
+
+// Descargar historial único
 controller.descargarExcelUnico = async (req, res) => {
   const { solicitudId } = req.params;
 
@@ -570,11 +598,10 @@ controller.descargarExcelUnico = async (req, res) => {
       { header: 'Empresa', key: 'empresa', width: 30 },
       { header: 'NIT', key: 'nit', width: 20 },
       { header: 'Tipo', key: 'tipo', width: 15 },
+      { header: 'Lugar', key: 'lugar', width: 20 },
+      { header: 'H. Registro', key: 'registro_hecho', width: 20 },
       { header: 'Fecha y Hora', key: 'fecha_hora', width: 20 },
       { header: 'Estado', key: 'estado', width: 20 },
-      { header: 'Lugar', key: 'lugar', width: 20 },
-      { header: 'Hora de registro', key: 'registro_hecho', width: 20 },
-      { header: 'Solicitud ID', key: 'solicitud_id', width: 15 },
     ];
 
     historial.forEach(registro => {
@@ -582,118 +609,69 @@ controller.descargarExcelUnico = async (req, res) => {
         colaborador: registro.nombre_colaborador,
         empresa: registro.empresa,
         nit: registro.nit,
-        tipo: registro.tipo, 
-        fecha_hora: new Date(registro.fecha_hora).toLocaleString(), 
-        estado: registro.estado_actual,
+        tipo: registro.tipo,
         lugar: registro.lugar,
-        registro_hecho: new Date(registro.registro_hecho).toLocaleString(), 
-        solicitud_id: registro.solicitud_id,
+        registro_hecho: new Date(registro.registro_hecho).toLocaleString(),
+        fecha_hora: new Date(registro.fecha_hora).toLocaleString(),
+        estado: registro.estado_actual,
       });
     });
 
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename=historial_unico_${solicitudId}.xlsx`
-    );
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=historial_unico_${solicitudId}.xlsx`);
 
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
-    console.error('[CONTROLADOR] Error al generar el Excel:', error);
-    res.status(500).json({ message: 'Error al generar el archivo Excel' });
+    console.error('[CONTROLADOR] Error al generar el Excel único:', error);
+    res.status(500).send('Error al generar el archivo Excel');
   }
 };
 
-// Función para descargar el historial global en Excel
+// Descargar historial global
 controller.descargarExcelGlobal = async (req, res) => {
   try {
-    // Obtener el historial global
     const historial = await obtenerHistorialGlobal();
 
-    // Crear un nuevo libro de Excel
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Historial Global');
 
-    // Definir las columnas
     worksheet.columns = [
       { header: 'Colaborador', key: 'colaborador', width: 30 },
       { header: 'Empresa', key: 'empresa', width: 30 },
       { header: 'NIT', key: 'nit', width: 20 },
       { header: 'Tipo', key: 'tipo', width: 15 },
+      { header: 'Lugar', key: 'lugar', width: 20 },
+      { header: 'H. Registro', key: 'registro_hecho', width: 20 },
       { header: 'Fecha y Hora', key: 'fecha_hora', width: 20 },
       { header: 'Estado', key: 'estado', width: 20 },
-      { header: 'Lugar', key: 'lugar', width: 20 },
-      { header: 'Hora de registro', key: 'h_registro', width: 20 },
-      { header: 'Solicitud ID', key: 'solicitud_id', width: 15 },
     ];
 
-    // Agregar los datos
-    historial.forEach(registro => { 
+    historial.forEach(registro => {
       worksheet.addRow({
         colaborador: registro.nombre_colaborador,
         empresa: registro.empresa,
         nit: registro.nit,
         tipo: registro.tipo,
+        lugar: registro.lugar,
+        registro_hecho: new Date(registro.registro_hecho).toLocaleString(),
         fecha_hora: new Date(registro.fecha_hora).toLocaleString(),
         estado: registro.estado_actual,
-        lugar: registro.lugar,
-        h_registro: new Date(registro.registro_hecho).toLocaleString(), 
-        solicitud_id: registro.solicitud_id,
       });
     });
 
-    // Configurar la respuesta
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename=historial_global.xlsx'
-    );
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=historial_global.xlsx');
 
-    // Escribir el archivo y enviarlo
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
-    console.error('[CONTROLADOR] Error al generar el Excel:', error);
-    res.status(500).json({ message: 'Error al generar el archivo Excel' });
+    console.error('[CONTROLADOR] Error al generar el Excel global:', error);
+    res.status(500).send('Error al generar el archivo Excel');
   }
 };
 
-
-
-const obtenerHistorialGlobal = async () => {
-  const query = `
-    SELECT 
-      c.nombre AS nombre_colaborador,
-      u.empresa,
-      u.nit,
-      r.tipo,
-      r.fecha_hora, 
-      s.lugar,
-      r.created_at AS registro_hecho,
-      r.estado_actual,
-      r.solicitud_id
-    FROM registros r
-    JOIN colaboradores c ON r.colaborador_id = c.id
-    JOIN solicitudes s ON r.solicitud_id = s.id
-    JOIN users u ON s.usuario_id = u.id
-    ORDER BY r.fecha_hora DESC;
-  `;
-
-  try {
-    const [rows] = await connection.execute(query);
-    return rows;
-  } catch (error) {
-    throw error;
-  }
-};
-
+// Función auxiliar para historial único
 const obtenerHistorialRegistros = async (solicitudId) => {
   const query = `
     SELECT 
@@ -704,25 +682,38 @@ const obtenerHistorialRegistros = async (solicitudId) => {
       r.fecha_hora,
       r.estado_actual,
       s.lugar,
-      r.created_at AS registro_hecho,
-      r.solicitud_id
+      r.created_at AS registro_hecho
     FROM registros r
     JOIN colaboradores c ON r.colaborador_id = c.id
     JOIN solicitudes s ON r.solicitud_id = s.id
     JOIN users u ON s.usuario_id = u.id
     WHERE r.solicitud_id = ?
-    ORDER BY r.fecha_hora DESC;
+    ORDER BY r.fecha_hora DESC
   `;
-
-  try {
-    const [rows] = await connection.execute(query, [solicitudId]);
-    return rows;
-  } catch (error) {
-    console.error('[CONTROLADOR] Error al obtener el historial:', error);
-    throw error;
-  }
+  const [rows] = await connection.execute(query, [solicitudId]);
+  return rows;
 };
- 
- 
+
+// Función auxiliar para historial global
+const obtenerHistorialGlobal = async () => {
+  const query = `
+    SELECT 
+      c.nombre AS nombre_colaborador,
+      u.empresa,
+      u.nit,
+      r.tipo,
+      r.fecha_hora,
+      r.estado_actual,
+      s.lugar,
+      r.created_at AS registro_hecho
+    FROM registros r
+    JOIN colaboradores c ON r.colaborador_id = c.id
+    JOIN solicitudes s ON r.solicitud_id = s.id
+    JOIN users u ON s.usuario_id = u.id
+    ORDER BY r.fecha_hora DESC
+  `;
+  const [rows] = await connection.execute(query);
+  return rows;
+};
 
 module.exports = controller; 

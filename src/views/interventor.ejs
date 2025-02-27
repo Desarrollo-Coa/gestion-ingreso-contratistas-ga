@@ -4,34 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
-  <!-- Cargar Bootstrap 4 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    
+    .container-interventor {
+      margin: 10px;
+    }
     .interventor {
       padding-left: 20px;
     }
-    
     .c-sesion {
       padding-right: 20px;
     }
-    
-    .table-responsive{
+    .table-responsive {
       height: 70vh;
     }
   </style>
 </head>
 <body>
-  <!-- Barra de navegación -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <a class="navbar-brand interventor" href="#">Interventor GA - <%= username  %>  </a>
+    <a class="navbar-brand interventor" href="#">Interventor GA - <%= username %></a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ml-auto">
-        <li class="nav-item active"></li>
         <li class="nav-item">
           <a class="navbar-brand c-sesion" href="/logout">Cerrar sesión</a>
         </li>
@@ -39,50 +36,89 @@
     </div>
   </nav>
 
-  <div class="container mt-5">
+  <div class="container-interventor">
     <h1 class="text-center mb-4">Solicitud Ingreso Contratistas</h1>
 
-    <!-- Formulario de filtros -->
-    <form id="filtrosForm" class="mb-4">
-      <div class="row">
-        <div class="col-md-3">
-          <label for="filtroId">ID Solicitud</label>
-          <input type="text" class="form-control" id="filtroId" placeholder="ID">
-        </div>
-        <div class="col-md-3">
-          <label for="filtroFechaInicio">Fecha Inicio</label>
-          <input type="date" class="form-control" id="filtroFechaInicio">
-        </div>
-        <div class="col-md-3">
-          <label for="filtroFechaFin">Fecha Fin</label>
-          <input type="date" class="form-control" id="filtroFechaFin">
-        </div>
-        <div class="col-md-3">
-          <label for="filtroNit">NIT</label>
-          <input type="text" class="form-control" id="filtroNit" placeholder="NIT">
-        </div>
-      </div>
-      <div class="row mt-2">
-        <div class="col-md-3">
-          <label for="filtroEmpresa">Empresa</label>
-          <input type="text" class="form-control" id="filtroEmpresa" placeholder="Empresa">
-        </div>
-        <div class="col-md-3">
-          <label for="filtroLugar">Lugar</label>
-          <select class="form-control" id="filtroLugar">
-            <option value="">Todos los lugares</option>
-            <% lugares.forEach(lugar => { %>
-              <option value="<%= lugar %>"><%= lugar %></option>
-            <% }); %>
-          </select>
-        </div>
-        <div class="col-md-6 d-flex align-items-end">
-          <button type="button" class="btn btn-primary w-100" id="filtrarBtn">Filtrar</button>
-        </div>
-      </div>
-    </form>
+    <!-- Botón para mostrar/ocultar filtros -->
+    <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosCollapse" aria-expanded="true" aria-controls="filtrosCollapse">
+      <span id="toggleText">Ocultar Filtros</span>
+    </button>
 
-    <!-- Tabla de acciones -->
+    <!-- Contenedor colapsable para el formulario -->
+    <div class="collapse show" id="filtrosCollapse">
+      <form id="filtrosForm" class="mb-4">
+        <!-- Filtros Principales -->
+        <div class="row">
+          <div class="col-md-3">
+            <label for="filtroId">ID Solicitud</label>
+            <input type="text" class="form-control" id="filtroId" placeholder="ID">
+          </div>
+          <div class="col-md-3">
+            <label for="filtroCedula">Cédula Colaborador</label>
+            <input type="text" class="form-control" id="filtroCedula" placeholder="Cédula">
+          </div>
+          <div class="col-md-3">
+            <label for="filtroInterventor">Interventor</label>
+            <input type="text" class="form-control" id="filtroInterventor" placeholder="Interventor">
+          </div>
+          <div class="col-md-3">
+            <label for="filtroEstado">Estado</label>
+            <select class="form-control" id="filtroEstado">
+              <option value="">Todos los estados</option>
+              <option value="aprobada">Pendiente Ingreso</option>
+              <option value="en labor">En Labor</option>
+              <option value="labor detenida">Labor Detenida</option>
+              <option value="pendiente">Pendiente</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Filtros Secundarios -->
+        <div class="row mt-2">
+          <div class="col-md-3">
+            <label for="filtroFechaInicio">Fecha Inicio</label>
+            <input type="date" class="form-control" id="filtroFechaInicio">
+          </div>
+          <div class="col-md-3">
+            <label for="filtroFechaFin">Fecha Fin</label>
+            <input type="date" class="form-control" id="filtroFechaFin">
+          </div>
+          <div class="col-md-3">
+            <label for="filtroNit">NIT</label>
+            <input type="text" class="form-control" id="filtroNit" placeholder="NIT">
+          </div>
+          <div class="col-md-3">
+            <label for="filtroEmpresa">Empresa</label>
+            <input type="text" class="form-control" id="filtroEmpresa" placeholder="Empresa">
+          </div>
+        </div>
+
+        <!-- Filtros Adicionales y Botón -->
+        <div class="row mt-2">
+          <div class="col-md-3">
+            <label for="filtroLugar">Lugar</label>
+            <select class="form-control" id="filtroLugar">
+              <option value="">Todos los lugares</option>
+              <% lugares.forEach(lugar => { %>
+                <option value="<%= lugar %>"><%= lugar %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label for="filtroVigencia">Vigencia</label>
+            <select class="form-control" id="filtroVigencia">
+              <option value="">Todas</option>
+              <option value="Vigente">Vigente</option>
+              <option value="Vencida">Vencida</option>
+            </select>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button type="button" class="btn btn-primary w-100" id="filtrarBtn">Filtrar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
     <div class="table-responsive">
       <table class="table table-bordered table-striped table-hover shadow-sm rounded" id="tablaSolicitudes">
         <thead class="thead-dark">
@@ -99,13 +135,12 @@
             <th>Vigencia</th>
             <th>Acción</th>
             <% if (username === "COA") { %>
-
-              <th>Eliminar</th>  
-              <% } %>
+              <th>Eliminar</th>
+            <% } %>
             <th>Ver QR</th>
             <th>Detalles</th>
             <% if (username === "COA") { %>
-            <th>H. de Ingresos</th>
+              <th>H. de Ingresos</th>
             <% } %>
           </tr>
         </thead>
@@ -120,28 +155,55 @@
                 <td><%= accion.fin_obra %></td>
                 <td><%= accion.lugar %></td>
                 <td><%= accion.labor %></td>
-                <td><%= accion.solicitud_estado %></td>
-                <td><%= accion.interventor %></td>
-                <td><%= accion.estado_vigencia %></td> 
                 <td>
-                  <% if (accion.puede_aprobar === 'Aprobar' && accion.estado_vigencia !== 'Vencida') { %>
-                    <button class="btn btn-success btn-sm" id="aprobarBtn-<%= accion.solicitud_id %>">Aprobar</button>
-                  <% } else if (accion.solicitud_estado === 'en labor' || accion.solicitud_estado === 'aprobada') { %>
-                    <button class="btn btn-danger text-white bg-red-600 hover:bg-red-700 py-2 px-4 rounded-md text-xs"
-                      onclick="manejarLabor(<%= accion.solicitud_id %>, this, 'detener')">Detener Labor</button>
+                  <% if (accion.solicitud_estado === 'aprobada' && accion.solicitud_estado_interventor === 'pendiente') { %>
+                    <span class="badge bg-success">Aprobado por SST</span>
+                  <% } else if (accion.solicitud_estado === 'aprobada' && accion.solicitud_estado_interventor === 'aprobada') { %>
+                    <span class="badge bg-info">Pendiente Ingreso</span>
+                  <% } else if (accion.solicitud_estado === 'pendiente') { %>
+                    <span class="badge bg-warning">Pendiente</span>
+                  <% } else if (accion.solicitud_estado === 'negada') { %>
+                    <span class="badge bg-danger">Negada</span>
+                  <% } else if (accion.solicitud_estado === 'en labor') { %>
+                    <span class="badge bg-primary">En Labor</span>
                   <% } else if (accion.solicitud_estado === 'labor detenida') { %>
-                    <button class="btn btn-success text-white bg-green-600 hover:bg-green-700 py-2 px-4 rounded-md text-xs"
-                      onclick="manejarLabor(<%= accion.solicitud_id %>, this, 'reanudar')">Reanudar Labor</button>
+                    <span class="badge bg-secondary">Labor Detenida</span>
                   <% } else { %>
-                    <span class="badge bg-danger">No disponible</span>
+                    <span class="badge bg-secondary"><%= accion.solicitud_estado %></span>
+                  <% } %>
+                </td>
+                <td><%= accion.interventor %></td>
+                <td><%= accion.estado_vigencia %></td>
+                <td>
+                  <% if (accion.accion === 'pendiente' && accion.estado_vigencia === 'Vigente') { %>
+                    <% if (accion.puede_aprobar === 'Aprobar') { %>
+                      <button class="btn btn-success btn-sm" id="aprobarBtn-<%= accion.solicitud_id %>">Aprobar</button>
+                    <% } else { %>
+                      <span class="badge bg-warning">Pendiente de Aprobación</span>
+                    <% } %>
+                  <% } else if (accion.accion === 'pendiente' && accion.estado_vigencia === 'Vencida') { %>
+                    <span class="badge bg-danger">No Aprobada - Vencida</span>
+                  <% } else if (accion.accion === 'aprobada' && (accion.solicitud_estado === 'en labor' || accion.solicitud_estado === 'aprobada') && accion.estado_vigencia === 'Vigente') { %>
+                    <button class="btn btn-danger text-white bg-red-600 hover:bg-red-700 py-2 px-4 rounded-md text-xs" onclick="manejarLabor(<%= accion.solicitud_id %>, this, 'detener')">Detener Labor</button>
+                  <% } else if (accion.accion === 'aprobada' && accion.solicitud_estado === 'en labor' && accion.estado_vigencia === 'Vencida') { %>
+                    <span class="badge bg-danger">En Labor - Vencida</span>
+                  <% } else if (accion.accion === 'aprobada' && accion.solicitud_estado === 'labor detenida' && accion.estado_vigencia === 'Vigente') { %>
+                    <button class="btn btn-success text-white bg-green-600 hover:bg-green-700 py-2 px-4 rounded-md text-xs" onclick="manejarLabor(<%= accion.solicitud_id %>, this, 'reanudar')">Reanudar Labor</button>
+                  <% } else if (accion.accion === 'aprobada' && accion.solicitud_estado === 'labor detenida' && accion.estado_vigencia === 'Vencida') { %>
+                    <span class="badge bg-danger">Labor Detenida - Vencida</span>
+                  <% } else if (accion.accion === 'aprobada' && accion.solicitud_estado === 'aprobada' && accion.estado_vigencia === 'Vencida') { %>
+                    <span class="badge bg-danger">Aprobada - Vencida</span>
+                  <% } else if (accion.accion === 'negada') { %>
+                    <span class="badge bg-danger">Negada<%= accion.estado_vigencia === 'Vencida' ? ' - Vencida' : '' %></span>
+                  <% } else { %>
+                    <span class="badge bg-secondary">Estado Desconocido</span>
                   <% } %>
                 </td>
                 <% if (username === "COA") { %>
-
-                <td>
-                  <button class="btn btn-danger btn-sm eliminar-solicitud" data-solicitud-id="<%= accion.solicitud_id %>">Eliminar</button>
-                  <% } %> 
-              </td>  
+                  <td>
+                    <button class="btn btn-danger btn-sm eliminar-solicitud" data-solicitud-id="<%= accion.solicitud_id %>">Eliminar</button>
+                  </td>
+                <% } %>
                 <td>
                   <% if (accion.puede_ver_qr === 'Ver QR' && accion.estado_vigencia !== 'Vencida') { %>
                     <button class="btn btn-info btn-sm" id="verQR-<%= accion.solicitud_id %>">Ver QR</button>
@@ -150,7 +212,6 @@
                   <% } %>
                 </td>
                 <td>
-                  
                   <button class="btn btn-info btn-sm" id="verDETALLES-<%= accion.solicitud_id %>">Ver</button>
                 </td>
                 <% if (username === "COA") { %>
@@ -162,7 +223,7 @@
             <% }); %>
           <% } else { %>
             <tr>
-              <td colspan="13" class="text-center">No hay acciones para revisar.</td>
+              <td colspan="<%= username === 'COA' ? 14 : 13 %>" class="text-center">No hay acciones para revisar.</td>
             </tr>
           <% } %>
         </tbody>
@@ -170,7 +231,7 @@
     </div>
   </div>
 
-  <!-- Modales existentes (sin cambios) -->
+  <!-- Modals (unchanged for brevity) -->
   <div class="modal fade" id="historialModal" tabindex="-1" aria-labelledby="historialModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -209,9 +270,7 @@
       <div class="modal-content shadow-lg rounded">
         <div class="modal-header">
           <h5 class="modal-title" id="modalVerQRLabel">Ver QR</h5>
-          <button type="button" class="close" data-bs-dismiss="modal" aria-label="Cerrar">
-            <span aria-hidden="true">×</span>
-          </button>
+          <button type="button" class="close" data-bs-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">×</span></button>
         </div>
         <div class="modal-body text-center">
           <div id="qr-container"></div>
@@ -228,9 +287,7 @@
       <div class="modal-content shadow-lg rounded">
         <div class="modal-header">
           <h5 class="modal-title" id="modalVerDetallesLabel">Detalles de la Solicitud</h5>
-          <button type="button" class="close" data-bs-dismiss="modal" aria-label="Cerrar">
-            <span aria-hidden="true">×</span>
-          </button>
+          <button type="button" class="close" data-bs-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">×</span></button>
         </div>
         <div class="modal-body" id="detalles-container"></div>
         <div class="modal-footer">
@@ -245,9 +302,7 @@
       <div class="modal-content shadow-lg rounded">
         <div class="modal-header">
           <h5 class="modal-title" id="modalVerFotoLabel">Foto Ampliada</h5>
-          <button type="button" class="close" data-bs-dismiss="modal" aria-label="Cerrar">
-            <span aria-hidden="true">×</span>
-          </button>
+          <button type="button" class="close" data-bs-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">×</span></button>
         </div>
         <div class="modal-body text-center">
           <img id="fotoAmpliada" src="" alt="Foto Ampliada" class="img-fluid">
@@ -259,310 +314,23 @@
     </div>
   </div>
 
-
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-  <!-- Scripts de Bootstrap -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <!-- Bootstrap CSS -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Bootstrap Icons -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <script>
+    const username = '<%= username %>';
+    console.log('[DEBUG] Username recibido en el frontend:', username);
 
-<!-- Bootstrap JS Bundle (incluye Popper.js) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Include jQuery and Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.bundle.min.js"></script>
- 
-
-<!-- 
-  <script> 
-document.addEventListener('DOMContentLoaded', function () {
-  const descargarUnicoExcel = document.getElementById('descargarUnicoExcel');
-  const descargarGlobalExcel = document.getElementById('descargarGlobalExcel');
-  let solicitudIdActual = null;
-
-  // Evento para abrir el modal y cargar el historial
-  document.querySelectorAll('.ver-historial').forEach(button => {
-    button.addEventListener('click', function () {
-      solicitudIdActual = this.getAttribute('data-solicitud-id');
-      fetch(`/obtener-historial/${solicitudIdActual}`)
-        .then(response => response.json())
-        .then(data => {
-          const tableBody = document.getElementById('historialTableBody');
-          tableBody.innerHTML = ''; // Limpiar el contenido anterior
-    
-          data.forEach(registro => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${registro.nombre_colaborador}</td>
-              <td>${registro.empresa}</td>
-              <td>${registro.nit}</td>
-              <td>${registro.tipo}</td>
-              <td>${registro.lugar}</td>
-              <td>${registro.registro_hecho}</td>
-              <td>${(registro.fecha_hora)}</td>
-              <td>${registro.estado_actual}</td>
-            `;
-            tableBody.appendChild(row);
-          });
-
-          // Mostrar el modal
-          const modal = new bootstrap.Modal(document.getElementById('historialModal'));
-          modal.show();
-        })
-        .catch(error => console.error('Error al obtener el historial:', error));
-    });
-  });
-
-  // Evento para descargar el historial único
-  descargarUnicoExcel.addEventListener('click', () => {
-    if (solicitudIdActual) {
-      window.location.href = `/descargar-excel/unico/${solicitudIdActual}`;
-    } else {
-      alert('No se ha seleccionado una solicitud.');
-    }
-  });
-
-  // Evento para descargar el historial global
-  descargarGlobalExcel.addEventListener('click', () => {
-    window.location.href = '/descargar-excel/global';
-  });
-});
-
-
-
-document.addEventListener('DOMContentLoaded', function () {
-  // Evento para abrir el modal de detalles de la solicitud
-  const verDetallesBtns = document.querySelectorAll('[id^="verDETALLES-"]');
-  verDetallesBtns.forEach(btn => {
-    btn.addEventListener('click', async function () {
-      const solicitudId = this.id.replace('verDETALLES-', ''); // Extraer el solicitud_id
-      try {
-        const response = await fetch(`/obtener-detalles-solicitud/${solicitudId}`);
-        if (response.ok) {
-          const detalles = await response.json(); // Asegurarse de recibir JSON
-          const detallesContainer = document.getElementById('detalles-container');
-          detalles.colaboradores.map(colaborador => {
-            console.log(colaborador)
-          })
-          // Construir el contenido del modal con los detalles de la solicitud
-          detallesContainer.innerHTML = `
-              <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 50px;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .header img {
-            width: 100px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-        .header p {
-            margin: 0;
-            font-size: 14px;
-            color: #666;
-        }
-        .section {
-            margin-bottom: 20px;
-        }
-        .section h2 {
-            font-size: 18px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 5px;
-        }
-        .section p {
-            margin: 5px 0;
-        }
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        .table th, .table td {
-            border: 1px solid #000;
-            padding: 8px;
-            text-align: left;
-        }
-        .table th {
-            background-color: #f2f2f2;
-        }
-        .table img {
-            width: 100px; /* Ancho fijo */
-            height: 100px; /* Alto fijo */
-            object-fit: cover; /* Ajuste de imagen sin deformación */
-            border: 1px solid #ccc; /* Opcional: marco para imágenes */
-            border-radius: 8px; /* Opcional: bordes redondeados */
-        }
-    </style>
-            <div class="header">
-              <img src="${detalles.logoBase64}" alt="Logo">
-              <h1>Informe de Solicitud</h1>
-              <p>Sistema Gestor de Ingreso Contratistas</p>
-              <p>Documento generado el día: ${detalles.fecha}</p>
-            </div>
-
-<div class="section">
-  <h2>Detalles de la Solicitud</h2>
-  <p><strong>Id de la Solicitud:</strong> ${detalles.solicitud.id || '❌'}</p>
-  <p><strong>Empresa:</strong> ${detalles.solicitud.empresa || '❌'}</p>
-  <p><strong>NIT:</strong> ${detalles.solicitud.nit || '❌'}</p>
-  <p><strong>Lugar:</strong> ${detalles.solicitud.lugar || '❌'}</p>
-  <p><strong>Labor:</strong> ${detalles.solicitud.labor || '❌'}</p>
-  <p><strong>Contratista:</strong> ${detalles.contractorName || '❌'}</p>
-  <p><strong>Interventor:</strong> ${detalles.interventorName || '❌'}</p>
-  <p><strong>Fechas:</strong> ${detalles.solicitud.inicio_obra || '❌'} - ${detalles.solicitud.fin_obra || '❌'}</p> 
-  <p><strong>ARL:</strong> ${detalles.solicitud.arl_documento ? '✅' : '❌'}</p>
-  <p><strong>Planilla de Pago Seguridad Social:</strong> ${detalles.solicitud.pasocial_documento ? '✅' : '❌'}</p>
-  
-</div>
-
-<div class="section">
-  <h2>Colaboradores</h2>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Cédula</th>
-        <th>Nombre</th>
-        <th>Fotos</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${detalles.colaboradores.map(colaborador => `
-        <tr>
-          <td>${colaborador.cedula || '❌'}</td>
-          <td>${colaborador.nombre || '❌'}</td>
-          <td>
-            ${colaborador.foto ? '✅' : '❌'} Foto
-            <br>
-            ${colaborador.foto ? `<img src="${colaborador.foto}" alt="Foto del colaborador" class="foto-colaborador" data-foto="${colaborador.foto}" style="cursor: pointer;">` : ''}
-            <br>
-            ${colaborador.cedulaFoto ? '✅' : '❌'} Cédula
-            <br>
-            ${colaborador.cedulaFoto ? `<img src="${colaborador.cedulaFoto}" alt="Foto de la cédula" class="foto-cedula" data-foto="${colaborador.cedulaFoto}" style="cursor: pointer;">` : ''}
-          </td>
-        </tr>
-      `).join('')}
-    </tbody>
-  </table>
-</div>
-          `;
-
-          // Mostrar el modal de detalles
-          $('#modalVerDetalles').modal('show');
-
-          // Agregar eventos a las fotos para ampliarlas
-          const fotosColaborador = document.querySelectorAll('.foto-colaborador');
-          const fotosCedula = document.querySelectorAll('.foto-cedula');
-
-          fotosColaborador.forEach(foto => {
-            foto.addEventListener('click', () => {
-              const fotoAmpliada = document.getElementById('fotoAmpliada');
-              fotoAmpliada.src = foto.getAttribute('data-foto');
-              $('#modalVerFoto').modal('show');
-            });
-          });
-
-          fotosCedula.forEach(foto => {
-            foto.addEventListener('click', () => {
-              const fotoAmpliada = document.getElementById('fotoAmpliada');
-              fotoAmpliada.src = foto.getAttribute('data-foto');
-              $('#modalVerFoto').modal('show');
-            });
-          });
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudieron obtener los detalles de la solicitud',
-          });
-        }
-      } catch (error) {
-        console.error('Error al obtener los detalles:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Hubo un error al obtener los detalles de la solicitud.',
-        });
-      }
-    });
-  });
-});
- async function manejarLabor(solicitudId, button, accion) {
-  try {
-    const mensajeConfirmacion = accion === 'detener' 
-      ? '¿Está seguro de que desea detener la labor?'
-      : '¿Está seguro de que desea reanudar la labor?';
-
-    const result = await Swal.fire({
-      title: 'Confirmar acción',
-      text: mensajeConfirmacion,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, continuar',
-      cancelButtonText: 'Cancelar',
+    $(document).ready(function () {
+      reasignarEventos(); // Initial event assignment
     });
 
-    if (!result.isConfirmed) {
-      return;
-    }
-
-    button.disabled = true;
-    button.innerHTML = 'Procesando...';
-
-    const endpoint = accion === 'detener'
-      ? `/solicitudes/${solicitudId}/detener-labor`
-      : `/solicitudes/${solicitudId}/reanudar-labor`;
-
-    const response = await fetch(endpoint, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (response.ok) {
-      document.location.reload();
-    } else {
-      const errorData = await response.json();
-      Swal.fire({
-        icon: 'error',
-        title: 'Error al procesar la solicitud',
-        text: errorData.message || 'No se pudo procesar la solicitud.',
-      });
-    }
-  } catch (err) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Error de conexión',
-      text: 'Ocurrió un error al intentar procesar la solicitud.',
-    });
-    console.error('Error al intentar manejar la labor:', err);
-  } finally {
-    button.disabled = false;
-    button.innerHTML = accion === 'detener' ? 'Detener Labor' : 'Reanudar Labor';
-  }
-}
-
- 
-  document.addEventListener('DOMContentLoaded', function () {
-  // Evento para aprobar solicitud
-  const aprobarBtns = document.querySelectorAll('[id^="aprobarBtn-"]');
-  aprobarBtns.forEach(btn => {
-    btn.addEventListener('click', async function () {
-      const solicitudId = this.id.replace('aprobarBtn-', ''); // Extraer el solicitud_id
-
-      // Mostrar confirmación usando Swal
+    async function manejarAprobar(btn) {
+      const solicitudId = btn.id.replace('aprobarBtn-', '');
       const confirmacion = await Swal.fire({
         title: '¿Estás seguro?',
         text: 'Esta acción aprobará la solicitud.',
@@ -579,663 +347,381 @@ document.addEventListener('DOMContentLoaded', function () {
       try {
         const response = await fetch('/aprobar-solicitud-interventor', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ solicitudId }), // Enviar solicitudId en el cuerpo
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ solicitudId }),
         });
 
         if (response.ok) {
-          // Mostrar éxito con Swal
-          await Swal.fire({
-            title: '¡Éxito!',
-            text: 'La solicitud ha sido aprobada.',
-            icon: 'success',
-            confirmButtonColor: '#3085d6',
-          });
-
-          window.location.reload(); // Recargar la página para reflejar los cambios
+          await Swal.fire('¡Éxito!', 'La solicitud ha sido aprobada.', 'success');
+          window.location.reload();
         } else {
-          // Mostrar error con Swal
-          Swal.fire({
-            title: 'Error',
-            text: 'Hubo un problema al aprobar la solicitud.',
-            icon: 'error',
-            confirmButtonColor: '#d33',
-          });
+          Swal.fire('Error', 'Hubo un problema al aprobar la solicitud.', 'error');
         }
       } catch (error) {
-        console.error('Error al hacer la solicitud:', error);
-
-        // Mostrar error genérico con Swal
-        Swal.fire({
-          title: 'Error',
-          text: 'Ocurrió un error al realizar la solicitud.',
-          icon: 'error',
-          confirmButtonColor: '#d33',
-        });
-      }
-    });
-  });
-});
-
-
-  const verQRBtns = document.querySelectorAll('[id^="verQR-"]');
-
-verQRBtns.forEach(btn => {
-  btn.addEventListener('click', async function () {
-    const solicitudId = this.id.replace('verQR-', ''); // Extraer el solicitud_id
-
-    try {
-      const response = await fetch(`/generar-qr/${solicitudId}`);
-      if (response.ok) {
-        const qrData = await response.json(); // Asegurarse de recibir JSON
-        const qrContainer = document.getElementById('qr-container');
-        qrContainer.innerHTML = `<img src="${qrData.qrUrl}" alt="QR Code" class="img-fluid">`;
-        $('#modalVerQR').modal('show');
-      } else {
-        // Usar SweetAlert en lugar de alert
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'No se pudo obtener el QR para esta solicitud',
-        });
-      }
-    } catch (error) {
-      console.error('Error al obtener el QR:', error);
-      // Usar SweetAlert en lugar de alert
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Hubo un error al obtener el QR.',
-      });
-    }
-  });
-});
-     
-document.getElementById('filtrarBtn').addEventListener('click', function () {
-  // Obtener los valores de los filtros
-  const filtroId = document.getElementById('filtroId').value.trim().toLowerCase();
-  const filtroFechaInicio = document.getElementById('filtroFechaInicio').value;
-  const filtroFechaFin = document.getElementById('filtroFechaFin').value;
-  const filtroNit = document.getElementById('filtroNit').value.trim().toLowerCase();
-  const filtroEmpresa = document.getElementById('filtroEmpresa').value.trim().toLowerCase();
-
-  // Imprimir los valores de los filtros en la consola (para depuración)
-  console.log({
-    mensaje: "Valores de los filtros:",
-    filtroId,
-    filtroFechaInicio,
-    filtroFechaFin,
-    filtroNit,
-    filtroEmpresa
-  });
-
-  
-  // Obtener todas las filas de la tabla
-  const filas = document.querySelectorAll('#tablaSolicitudes tbody tr');
-
-  filas.forEach(function (fila) {
-    const id = fila.querySelector('.solicitud-id').textContent.trim().toLowerCase();
-    const empresa = fila.cells[1].textContent.trim().toLowerCase(); // Columna Empresa
-    const nit = fila.cells[2].textContent.trim().toLowerCase(); // Columna NIT
-    const inicioObraTexto = fila.cells[3].textContent.trim(); // Columna Fecha Inicio (DD/MM/YYYY)
-    const finObraTexto = fila.cells[4].textContent.trim(); // Columna Fecha Fin (DD/MM/YYYY)
-
-    // Convertir fechas de la tabla a formato MM/DD/YYYY
-    const inicioObra = convertirFecha(inicioObraTexto);
-    const finObra = convertirFecha(finObraTexto);
-
-    let mostrarFila = true;
-
-    // Filtro por ID
-    if (filtroId && !id.includes(filtroId)) {
-      mostrarFila = false;
-    }
-
-    // Filtro por fechas
-    if (filtroFechaInicio && filtroFechaFin) {
-      const fechaInicioFiltro = new Date(filtroFechaInicio);
-      const fechaFinFiltro = new Date(filtroFechaFin);
-
-      // Mostrar la fila si hay superposición de rangos de fechas
-      if (inicioObra > fechaFinFiltro || finObra < fechaInicioFiltro) {
-        mostrarFila = false;
+        console.error('[ERROR] Error al aprobar:', error);
+        Swal.fire('Error', 'Ocurrió un error al realizar la solicitud.', 'error');
       }
     }
 
-    // Filtro por NIT
-    if (filtroNit && !nit.includes(filtroNit)) {
-      mostrarFila = false;
-    }
-
-    // Filtro por Empresa
-    if (filtroEmpresa && !empresa.includes(filtroEmpresa)) {
-      mostrarFila = false;
-    }
-
-    // Mostrar u ocultar la fila según el filtro
-    fila.style.display = mostrarFila ? '' : 'none';
-  });
-});
-
-// Función para convertir fechas de DD/MM/YYYY a MM/DD/YYYY
-
-function convertirFecha(fechaTexto) {
-  if (!fechaTexto) return null;
-
-  const [dia, mes, anio] = fechaTexto.split('/');
-  return new Date(`${mes}/${dia}/${anio}`);
-}
-
-
-
-
-</script> -->
-
-
-<script>
-
-$(document).ready(function () {
-        // Handle delete button click
-        $('.eliminar-solicitud').on('click', function () {
-            const solicitudId = $(this).data('solicitud-id');
-
-            Swal.fire({
-                title: '¿Estás seguro?',
-                text: 'Esta acción eliminará la solicitud y todos los archivos asociados. No se puede deshacer.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.ajax({
-                        url: '/eliminar-solicitud',
-                        method: 'POST',
-                        data: { solicitud_id: solicitudId },
-                        success: function (response) {
-                            Swal.fire(
-                                'Eliminado!',
-                                'La solicitud ha sido eliminada correctamente.',
-                                'success'
-                            ).then(() => {
-                                location.reload(); // Reload the page to update the table
-                            });
-                        },
-                        error: function (xhr) {
-                            Swal.fire(
-                                'Error!',
-                                'No se pudo eliminar la solicitud: ' + xhr.responseText,
-                                'error'
-                            );
-                        }
-                    });
-                }
-            });
-        });
-    });
-
-  // Declarar username como una variable global desde el backend (EJS)
-  const username = '<%= username %>';
-  console.log('[DEBUG] Username recibido en el frontend:', username);
-
-  // Función para manejar el evento de "Aprobar"
-  async function manejarAprobar(btn) {
-    const solicitudId = btn.id.replace('aprobarBtn-', '');
-    const confirmacion = await Swal.fire({
-      title: '¿Estás seguro?',
-      text: 'Esta acción aprobará la solicitud.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Sí, aprobar',
-      cancelButtonText: 'Cancelar',
-    });
-
-    if (!confirmacion.isConfirmed) return;
-
-    try {
-      const response = await fetch('/aprobar-solicitud-interventor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ solicitudId }),
-      });
-
-      if (response.ok) {
-        await Swal.fire({
-          title: '¡Éxito!',
-          text: 'La solicitud ha sido aprobada.',
-          icon: 'success',
-          confirmButtonColor: '#3085d6',
-        });
-        window.location.reload();
-      } else {
-        Swal.fire({
-          title: 'Error',
-          text: 'Hubo un problema al aprobar la solicitud.',
-          icon: 'error',
-          confirmButtonColor: '#d33',
-        });
+    async function manejarVerQR(btn) {
+      const solicitudId = btn.id.replace('verQR-', '');
+      try {
+        const response = await fetch(`/generar-qr/${solicitudId}`);
+        if (response.ok) {
+          const qrData = await response.json();
+          document.getElementById('qr-container').innerHTML = `<img src="${qrData.qrUrl}" alt="QR Code" class="img-fluid">`;
+          $('#modalVerQR').modal('show');
+        } else {
+          Swal.fire('Error', 'No se pudo obtener el QR para esta solicitud', 'error');
+        }
+      } catch (error) {
+        console.error('[ERROR] Error al obtener el QR:', error);
+        Swal.fire('Error', 'Hubo un error al obtener el QR.', 'error');
       }
-    } catch (error) {
-      console.error('[ERROR] Error al aprobar:', error);
-      Swal.fire({
-        title: 'Error',
-        text: 'Ocurrió un error al realizar la solicitud.',
-        icon: 'error',
-        confirmButtonColor: '#d33',
-      });
     }
-  }
 
-  // Función para manejar el evento de "Ver QR"
-  async function manejarVerQR(btn) {
-    const solicitudId = btn.id.replace('verQR-', '');
-    try {
-      const response = await fetch(`/generar-qr/${solicitudId}`);
-      if (response.ok) {
-        const qrData = await response.json();
-        const qrContainer = document.getElementById('qr-container');
-        qrContainer.innerHTML = `<img src="${qrData.qrUrl}" alt="QR Code" class="img-fluid">`;
-        $('#modalVerQR').modal('show');
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'No se pudo obtener el QR para esta solicitud',
-        });
-      }
-    } catch (error) {
-      console.error('[ERROR] Error al obtener el QR:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Hubo un error al obtener el QR.',
-      });
-    }
-  }
-
-  // Función para manejar el evento de "Ver Detalles"
-  async function manejarVerDetalles(btn) {
-    const solicitudId = btn.id.replace('verDETALLES-', '');
-    try {
-      const response = await fetch(`/obtener-detalles-solicitud/${solicitudId}`);
-      if (response.ok) {
-        const detalles = await response.json();
-        const detallesContainer = document.getElementById('detalles-container');
-        detallesContainer.innerHTML = `
-          <style>
-            body { font-family: Arial, sans-serif; margin: 50px; }
-            .header { text-align: center; margin-bottom: 20px; }
-            .header img { width: 100px; }
-            .header h1 { margin: 0; font-size: 24px; }
-            .header p { margin: 0; font-size: 14px; color: #666; }
-            .section { margin-bottom: 20px; }
-            .section h2 { font-size: 18px; border-bottom: 2px solid #000; padding-bottom: 5px; }
-            .section p { margin: 5px 0; }
-            .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            .table th, .table td { border: 1px solid #000; padding: 8px; text-align: left; }
-            .table th { background-color: #f2f2f2; }
-            .table img { width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; border-radius: 8px; }
-          </style>
-          <div class="header">
-            <img src="${detalles.logoBase64}" alt="Logo">
-            <h1>Informe de Solicitud</h1>
-            <p>Sistema Gestor de Ingreso Contratistas</p>
-            <p>Documento generado el día: ${detalles.fecha}</p>
-          </div>
-          <div class="section">
-            <h2>Detalles de la Solicitud</h2>
-            <p><strong>Id de la Solicitud:</strong> ${detalles.solicitud.id || '❌'}</p>
-            <p><strong>Empresa:</strong> ${detalles.solicitud.empresa || '❌'}</p>
-            <p><strong>NIT:</strong> ${detalles.solicitud.nit || '❌'}</p>
-            <p><strong>Lugar:</strong> ${detalles.solicitud.lugar || '❌'}</p>
-            <p><strong>Labor:</strong> ${detalles.solicitud.labor || '❌'}</p>
-            <p><strong>Contratista:</strong> ${detalles.contractorName || '❌'}</p>
-            <p><strong>Interventor:</strong> ${detalles.interventorName || '❌'}</p>
-            <p><strong>Fechas:</strong> ${detalles.solicitud.inicio_obra || '❌'} - ${detalles.solicitud.fin_obra || '❌'}</p>
-            <p><strong>ARL:</strong> ${detalles.solicitud.arl_documento ? '✅' : '❌'}</p>
-            <p><strong>Planilla de Pago Seguridad Social:</strong> ${detalles.solicitud.pasocial_documento ? '✅' : '❌'}</p>
-          </div>
-          <div class="section">
-            <h2>Colaboradores</h2>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Cédula</th>
-                  <th>Nombre</th>
-                  <th>Fotos</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${detalles.colaboradores.map(colaborador => `
+    async function manejarVerDetalles(btn) {
+      const solicitudId = btn.id.replace('verDETALLES-', '');
+      try {
+        const response = await fetch(`/obtener-detalles-solicitud/${solicitudId}`);
+        if (response.ok) {
+          const detalles = await response.json();
+          const detallesContainer = document.getElementById('detalles-container');
+          detallesContainer.innerHTML = `
+            <style>
+              body { font-family: Arial, sans-serif; margin: 50px; }
+              .header { text-align: center; margin-bottom: 20px; }
+              .header img { width: 100px; }
+              .header h1 { margin: 0; font-size: 24px; }
+              .header p { margin: 0; font-size: 14px; color: #666; }
+              .section { margin-bottom: 20px; }
+              .section h2 { font-size: 18px; border-bottom: 2px solid #000; padding-bottom: 5px; }
+              .section p { margin: 5px 0; }
+              .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+              .table th, .table td { border: 1px solid #000; padding: 8px; text-align: left; }
+              .table th { background-color: #f2f2f2; }
+              .table img { width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; border-radius: 8px; }
+            </style>
+            <div class="header">
+              <img src="${detalles.logoBase64}" alt="Logo">
+              <h1>Informe de Solicitud</h1>
+              <p>Sistema Gestor de Ingreso Contratistas</p>
+              <p>Documento generado el día: ${detalles.fecha}</p>
+            </div>
+            <div class="section">
+              <h2>Detalles de la Solicitud</h2>
+              <p><strong>Id de la Solicitud:</strong> ${detalles.solicitud.id || '❌'}</p>
+              <p><strong>Empresa:</strong> ${detalles.solicitud.empresa || '❌'}</p>
+              <p><strong>NIT:</strong> ${detalles.solicitud.nit || '❌'}</p>
+              <p><strong>Lugar:</strong> ${detalles.solicitud.lugar || '❌'}</p>
+              <p><strong>Labor:</strong> ${detalles.solicitud.labor || '❌'}</p>
+              <p><strong>Contratista:</strong> ${detalles.contractorName || '❌'}</p>
+              <p><strong>Interventor:</strong> ${detalles.interventorName || '❌'}</p>
+              <p><strong>Fechas:</strong> ${detalles.solicitud.inicio_obra || '❌'} - ${detalles.solicitud.fin_obra || '❌'}</p>
+              <p><strong>ARL:</strong> ${detalles.solicitud.arl_documento ? '✅' : '❌'}</p>
+              <p><strong>Planilla de Pago Seguridad Social:</strong> ${detalles.solicitud.pasocial_documento ? '✅' : '❌'}</p>
+            </div>
+            <div class="section">
+              <h2>Colaboradores</h2>
+              <table class="table">
+                <thead>
                   <tr>
-                    <td>${colaborador.cedula || '❌'}</td>
-                    <td>${colaborador.nombre || '❌'}</td>
-                    <td>
-                      ${colaborador.foto ? '✅' : '❌'} Foto
-                      <br>
-                      ${colaborador.foto ? `<img src="${colaborador.foto}" alt="Foto del colaborador" class="foto-colaborador" data-foto="${colaborador.foto}" style="cursor: pointer;">` : ''}
-                      <br>
-                      ${colaborador.cedulaFoto ? '✅' : '❌'} Cédula
-                      <br>
-                      ${colaborador.cedulaFoto ? `<img src="${colaborador.cedulaFoto}" alt="Foto de la cédula" class="foto-cedula" data-foto="${colaborador.cedulaFoto}" style="cursor: pointer;">` : ''}
-                    </td>
+                    <th>Cédula</th>
+                    <th>Nombre</th>
+                    <th>Fotos</th>
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        `;
-        $('#modalVerDetalles').modal('show');
-
-        const fotosColaborador = document.querySelectorAll('.foto-colaborador');
-        const fotosCedula = document.querySelectorAll('.foto-cedula');
-        fotosColaborador.forEach(foto => {
-          foto.addEventListener('click', () => {
-            document.getElementById('fotoAmpliada').src = foto.getAttribute('data-foto');
-            $('#modalVerFoto').modal('show');
-          });
-        });
-        fotosCedula.forEach(foto => {
-          foto.addEventListener('click', () => {
-            document.getElementById('fotoAmpliada').src = foto.getAttribute('data-foto');
-            $('#modalVerFoto').modal('show');
-          });
-        });
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'No se pudieron obtener los detalles de la solicitud',
-        });
-      }
-    } catch (error) {
-      console.error('[ERROR] Error al obtener los detalles:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Hubo un error al obtener los detalles de la solicitud.',
-      });
-    }
-  }
-
-  // Función para manejar el evento de "Ver Historial"
-  function manejarVerHistorial(btn) {
-    const solicitudId = btn.getAttribute('data-solicitud-id');
-    fetch(`/obtener-historial/${solicitudId}`)
-      .then(response => response.json())
-      .then(data => {
-        const tableBody = document.getElementById('historialTableBody');
-        tableBody.innerHTML = '';
-        data.forEach(registro => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${registro.nombre_colaborador}</td>
-            <td>${registro.empresa}</td>
-            <td>${registro.nit}</td>
-            <td>${registro.tipo}</td>
-            <td>${registro.lugar}</td>
-            <td>${registro.registro_hecho}</td>
-            <td>${registro.fecha_hora}</td>
-            <td>${registro.estado_actual}</td>
+                </thead>
+                <tbody>
+                  ${detalles.colaboradores.map(colaborador => `
+                    <tr>
+                      <td>${colaborador.cedula || '❌'}</td>
+                      <td>${colaborador.nombre || '❌'}</td>
+                      <td>
+                        ${colaborador.foto ? '✅' : '❌'} Foto
+                        <br>
+                        ${colaborador.foto ? `<img src="${colaborador.foto}" alt="Foto del colaborador" class="foto-colaborador" data-foto="${colaborador.foto}" style="cursor: pointer;">` : ''}
+                        <br>
+                        ${colaborador.cedulaFoto ? '✅' : '❌'} Cédula
+                        <br>
+                        ${colaborador.cedulaFoto ? `<img src="${colaborador.cedulaFoto}" alt="Foto de la cédula" class="foto-cedula" data-foto="${colaborador.cedulaFoto}" style="cursor: pointer;">` : ''}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
           `;
-          tableBody.appendChild(row);
-        });
-        const modal = new bootstrap.Modal(document.getElementById('historialModal'));
-        modal.show();
-      })
-      .catch(error => console.error('[ERROR] Error al obtener el historial:', error));
-  }
+          $('#modalVerDetalles').modal('show');
 
-  // Función para manejar "Detener Labor" y "Reanudar Labor"
-  async function manejarLabor(solicitudId, button, accion) {
-    try {
-      const mensajeConfirmacion = accion === 'detener'
-        ? '¿Está seguro de que desea detener la labor?'
-        : '¿Está seguro de que desea reanudar la labor?';
-
-      const result = await Swal.fire({
-        title: 'Confirmar acción',
-        text: mensajeConfirmacion,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, continuar',
-        cancelButtonText: 'Cancelar',
-      });
-
-      if (!result.isConfirmed) {
-        return;
+          document.querySelectorAll('.foto-colaborador').forEach(foto => {
+            foto.addEventListener('click', () => {
+              document.getElementById('fotoAmpliada').src = foto.getAttribute('data-foto');
+              $('#modalVerFoto').modal('show');
+            });
+          });
+          document.querySelectorAll('.foto-cedula').forEach(foto => {
+            foto.addEventListener('click', () => {
+              document.getElementById('fotoAmpliada').src = foto.getAttribute('data-foto');
+              $('#modalVerFoto').modal('show');
+            });
+          });
+        } else {
+          Swal.fire('Error', 'No se pudieron obtener los detalles de la solicitud', 'error');
+        }
+      } catch (error) {
+        console.error('[ERROR] Error al obtener los detalles:', error);
+        Swal.fire('Error', 'Hubo un error al obtener los detalles de la solicitud.', 'error');
       }
-
-      button.disabled = true;
-      button.innerHTML = 'Procesando...';
-
-      const endpoint = accion === 'detener'
-        ? `/solicitudes/${solicitudId}/detener-labor`
-        : `/solicitudes/${solicitudId}/reanudar-labor`;
-
-      const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        document.location.reload();
-      } else {
-        const errorData = await response.json();
-        Swal.fire({
-          icon: 'error',
-          title: 'Error al procesar la solicitud',
-          text: errorData.message || 'No se pudo procesar la solicitud.',
-        });
-      }
-    } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error de conexión',
-        text: 'Ocurrió un error al intentar procesar la solicitud.',
-      });
-      console.error('[ERROR] Error al intentar manejar la labor:', err);
-    } finally {
-      button.disabled = false;
-      button.innerHTML = accion === 'detener' ? 'Detener Labor' : 'Reanudar Labor';
     }
-  }
 
-  // Función para manejar el filtrado
-  document.getElementById('filtrarBtn').addEventListener('click', async function () {
-    console.log('[DEBUG] Botón Filtrar clickeado');
-    const filtros = {
-      id: document.getElementById('filtroId').value.trim(),
-      fechaInicio: document.getElementById('filtroFechaInicio').value,
-      fechaFin: document.getElementById('filtroFechaFin').value,
-      nit: document.getElementById('filtroNit').value.trim(),
-      empresa: document.getElementById('filtroEmpresa').value.trim(),
-      lugar: document.getElementById('filtroLugar').value
-    };
-
-    console.log('[DEBUG] Filtros enviados:', filtros);
-
-    try {
-      const response = await fetch('/filtrar-solicitudes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(filtros)
-      });
-
-      console.log('[DEBUG] Respuesta del servidor:', response.status);
-
-      if (response.ok) {
-        const solicitudesFiltradas = await response.json();
-        console.log('[DEBUG] Solicitudes filtradas recibidas:', solicitudesFiltradas);
-        actualizarTabla(solicitudesFiltradas);
-      } else {
-        console.error('[ERROR] Respuesta no OK:', response.status);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'No se pudieron filtrar las solicitudes.',
+    async function manejarLabor(solicitudId, button, accion) {
+      try {
+        const mensajeConfirmacion = accion === 'detener' ? '¿Está seguro de que desea detener la labor?' : '¿Está seguro de que desea reanudar la labor?';
+        const result = await Swal.fire({
+          title: 'Confirmar acción',
+          text: mensajeConfirmacion,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Sí, continuar',
+          cancelButtonText: 'Cancelar',
         });
+
+        if (!result.isConfirmed) return;
+
+        button.disabled = true;
+        button.innerHTML = 'Procesando...';
+
+        const endpoint = accion === 'detener' ? `/solicitudes/${solicitudId}/detener-labor` : `/solicitudes/${solicitudId}/reanudar-labor`;
+        const response = await fetch(endpoint, { method: 'PUT', headers: { 'Content-Type': 'application/json' } });
+
+        if (response.ok) {
+          document.location.reload();
+        } else {
+          const errorData = await response.json();
+          Swal.fire('Error al procesar la solicitud', errorData.message || 'No se pudo procesar la solicitud.', 'error');
+        }
+      } catch (err) {
+        Swal.fire('Error de conexión', 'Ocurrió un error al intentar procesar la solicitud.', 'error');
+        console.error('[ERROR] Error al intentar manejar la labor:', err);
+      } finally {
+        button.disabled = false;
+        button.innerHTML = accion === 'detener' ? 'Detener Labor' : 'Reanudar Labor';
       }
-    } catch (error) {
-      console.error('[ERROR] Error al filtrar:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Hubo un error al realizar el filtrado.',
-      });
     }
-  });
 
-  // // Función para actualizar la tabla
-  // function actualizarTabla(acciones) {
-  //   console.log('[DEBUG] Entrando en actualizarTabla con acciones:', acciones);
-  //   const tbody = document.querySelector('#tablaSolicitudes tbody');
-  //   tbody.innerHTML = '';
+    document.getElementById('filtrarBtn').addEventListener('click', async function () {
+      const filtros = {
+        id: document.getElementById('filtroId').value.trim(),
+        cedula: document.getElementById('filtroCedula').value.trim(),
+        interventor: document.getElementById('filtroInterventor').value.trim(),
+        estado: document.getElementById('filtroEstado').value,
+        fechaInicio: document.getElementById('filtroFechaInicio').value,
+        fechaFin: document.getElementById('filtroFechaFin').value,
+        nit: document.getElementById('filtroNit').value.trim(),
+        empresa: document.getElementById('filtroEmpresa').value.trim(),
+        lugar: document.getElementById('filtroLugar').value,
+        vigencia: document.getElementById('filtroVigencia').value, // New vigencia filter
+      };
 
-  //   if (acciones.length > 0) {
-  //     acciones.forEach(accion => {
-  //       console.log('[DEBUG] Procesando acción:', accion);
-  //       const row = document.createElement('tr');
-  //       row.innerHTML = `
-  //         <td class="solicitud-id">${accion.solicitud_id}</td>
-  //         <td>${accion.empresa}</td>
-  //         <td>${accion.nit}</td>
-  //         <td>${accion.inicio_obra}</td>
-  //         <td>${accion.fin_obra}</td>
-  //         <td>${accion.lugar}</td>
-  //         <td>${accion.labor}</td>
-  //         <td>${accion.solicitud_estado}</td>
-  //         <td>${accion.interventor}</td>
-  //         <td>${accion.estado_vigencia}</td>
-  //         <td>
-  //           ${accion.puede_aprobar === 'Aprobar' && accion.estado_vigencia !== 'Vencida' ?
-  //             `<button class="btn btn-success btn-sm" id="aprobarBtn-${accion.solicitud_id}">Aprobar</button>` :
-  //             (accion.solicitud_estado === 'en labor' || accion.solicitud_estado === 'aprobada' ?
-  //               `<button class="btn btn-danger text-white bg-red-600 hover:bg-red-700 py-2 px-4 rounded-md text-xs" onclick="manejarLabor(${accion.solicitud_id}, this, 'detener')">Detener Labor</button>` :
-  //               (accion.solicitud_estado === 'labor detenida' ?
-  //                 `<button class="btn btn-success text-white bg-green-600 hover:bg-green-700 py-2 px-4 rounded-md text-xs" onclick="manejarLabor(${accion.solicitud_id}, this, 'reanudar')">Reanudar Labor</button>` :
-  //                 `<span class="badge bg-danger">No disponible</span>`))
-  //           }
-  //         </td>
-  //         <td>
-  //           ${accion.puede_ver_qr === 'Ver QR' && accion.estado_vigencia !== 'Vencida' ?
-  //             `<button class="btn btn-info btn-sm" id="verQR-${accion.solicitud_id}">Ver QR</button>` :
-  //             `<span class="badge bg-danger">No disponible</span>`}
-  //         </td>
-  //         <td>
-  //           <button class="btn btn-info btn-sm" id="verDETALLES-${accion.solicitud_id}">Ver</button>
-  //         </td>
-  //         ${username === "COA" ? `
-  //           <td>
-  //             <button class="btn btn-info btn-sm ver-historial" data-solicitud-id="${accion.solicitud_id}">Ver Historial</button>
-  //           </td>` : ''}
-  //       `;
-  //       tbody.appendChild(row);
-  //     });
-  //   } else {
-  //     console.log('[DEBUG] No hay acciones para mostrar');
-  //     tbody.innerHTML = '<tr><td colspan="13" class="text-center">No hay acciones para revisar.</td></tr>';
-  //   }
+      try {
+        const response = await fetch('/filtrar-solicitudes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(filtros),
+        });
 
-  //   console.log('[DEBUG] Tabla actualizada, reasignando eventos');
-  //   reasignarEventos();
-  // }
+        if (response.ok) {
+          let solicitudesFiltradas = await response.json();
+          
+          // Apply client-side vigencia filter
+          if (filtros.vigencia) {
+            solicitudesFiltradas = solicitudesFiltradas.filter(accion => accion.estado_vigencia === filtros.vigencia);
+          }
 
-// Función para actualizar la tabla
-function actualizarTabla(acciones) {
-    console.log('[DEBUG] Entrando en actualizarTabla con acciones:', acciones);
-    const tbody = document.querySelector('#tablaSolicitudes tbody');
-    tbody.innerHTML = '';
+          actualizarTabla(solicitudesFiltradas);
+        } else {
+          Swal.fire('Error', 'No se pudieron filtrar las solicitudes.', 'error');
+        }
+      } catch (error) {
+        console.error('[ERROR] Error al filtrar:', error);
+        Swal.fire('Error', 'Hubo un error al realizar el filtrado.', 'error');
+      }
+    });
 
-    if (acciones.length > 0) {
-        acciones.forEach(accion => {
-            console.log('[DEBUG] Procesando acción:', accion);
+    document.getElementById('descargarUnicoExcel').addEventListener('click', function () {
+      const solicitudId = document.querySelector('#historialModal').dataset.solicitudId;
+      if (solicitudId) {
+        window.location.href = `/descargar-excel-unico/${solicitudId}`;
+      } else {
+        Swal.fire('Error', 'No se encontró el ID de la solicitud.', 'error');
+      }
+    });
+
+    document.getElementById('descargarGlobalExcel').addEventListener('click', function () {
+      window.location.href = '/descargar-excel-global';
+    });
+
+    function manejarVerHistorial(btn) {
+      const solicitudId = btn.getAttribute('data-solicitud-id');
+      fetch(`/obtener-historial/${solicitudId}`)
+        .then(response => response.json())
+        .then(data => {
+          const tableBody = document.getElementById('historialTableBody');
+          tableBody.innerHTML = '';
+          data.forEach(registro => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td class="solicitud-id">${accion.solicitud_id}</td>
-                <td>${accion.empresa}</td>
-                <td>${accion.nit}</td>
-                <td>${accion.inicio_obra}</td>
-                <td>${accion.fin_obra}</td>
-                <td>${accion.lugar}</td>
-                <td>${accion.labor}</td>
-                <td>${accion.solicitud_estado}</td>
-                <td>${accion.interventor}</td>
-                <td>${accion.estado_vigencia}</td>
-                <td>
-                    ${accion.puede_aprobar === 'Aprobar' && accion.estado_vigencia !== 'Vencida' ?
-                        `<button class="btn btn-success btn-sm" id="aprobarBtn-${accion.solicitud_id}">Aprobar</button>` :
-                        (accion.solicitud_estado === 'en labor' || accion.solicitud_estado === 'aprobada' ?
-                            `<button class="btn btn-danger text-white bg-red-600 hover:bg-red-700 py-2 px-4 rounded-md text-xs" onclick="manejarLabor(${accion.solicitud_id}, this, 'detener')">Detener Labor</button>` :
-                            (accion.solicitud_estado === 'labor detenida' ?
-                                `<button class="btn btn-success text-white bg-green-600 hover:bg-green-700 py-2 px-4 rounded-md text-xs" onclick="manejarLabor(${accion.solicitud_id}, this, 'reanudar')">Reanudar Labor</button>` :
-                                `<span class="badge bg-danger">No disponible</span>`))
-                    }
-                </td>
-                ${username === "COA" ? `
-                    <td>
-                        <button class="btn btn-danger btn-sm eliminar-solicitud" data-solicitud-id="${accion.solicitud_id}">Eliminar</button>
-                    </td>` : ''}
-                <td>
-                    ${accion.puede_ver_qr === 'Ver QR' && accion.estado_vigencia !== 'Vencida' ?
-                        `<button class="btn btn-info btn-sm" id="verQR-${accion.solicitud_id}">Ver QR</button>` :
-                        `<span class="badge bg-danger">No disponible</span>`}
-                </td>
-                <td>
-                    <button class="btn btn-info btn-sm" id="verDETALLES-${accion.solicitud_id}">Ver</button>
-                </td>
-                ${username === "COA" ? `
-                    <td>
-                        <button class="btn btn-info btn-sm ver-historial" data-solicitud-id="${accion.solicitud_id}">Ver Historial</button>
-                    </td>` : ''}
+              <td>${registro.nombre_colaborador}</td>
+              <td>${registro.empresa}</td>
+              <td>${registro.nit}</td>
+              <td>${registro.tipo}</td>
+              <td>${registro.lugar}</td>
+              <td>${registro.registro_hecho}</td>
+              <td>${registro.fecha_hora}</td>
+              <td>${registro.estado_actual}</td>
             `;
-            tbody.appendChild(row);
-        });
-    } else {
-        console.log('[DEBUG] No hay acciones para mostrar');
-        tbody.innerHTML = `<tr><td colspan="${username === "COA" ? 14 : 13}" class="text-center">No hay acciones para revisar.</td></tr>`;
+            tableBody.appendChild(row);
+          });
+          const modal = document.getElementById('historialModal');
+          modal.dataset.solicitudId = solicitudId;
+          new bootstrap.Modal(modal).show();
+        })
+        .catch(error => console.error('[ERROR] Error al obtener el historial:', error));
     }
+    function actualizarTabla(acciones) {
+  console.log('[DEBUG] Entrando en actualizarTabla con acciones:', acciones);
+  const tbody = document.querySelector('#tablaSolicitudes tbody');
+  tbody.innerHTML = '';
 
-    console.log('[DEBUG] Tabla actualizada, reasignando eventos');
-    reasignarEventos();
-}
-
-  // Función para reasignar eventos a los botones
-  function reasignarEventos() {
-    console.log('[DEBUG] Reasignando eventos');
-    document.querySelectorAll('[id^="aprobarBtn-"]').forEach(btn => {
-      btn.addEventListener('click', () => manejarAprobar(btn));
-      console.log('[DEBUG] Evento asignado a aprobarBtn:', btn.id);
+  if (acciones.length > 0) {
+    acciones.forEach(accion => {
+      console.log('[DEBUG] Procesando acción:', accion);
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td class="solicitud-id">${accion.solicitud_id}</td>
+        <td>${accion.empresa}</td>
+        <td>${accion.nit}</td>
+        <td>${accion.inicio_obra}</td>
+        <td>${accion.fin_obra}</td>
+        <td>${accion.lugar}</td>
+        <td>${accion.labor}</td>
+        <td>
+          ${accion.solicitud_estado === 'aprobada' && accion.solicitud_estado_interventor === 'pendiente' ?
+            `<span class="badge bg-success">Aprobado por SST</span>` :
+            (accion.solicitud_estado === 'aprobada' && accion.solicitud_estado_interventor === 'aprobada' ?
+              `<span class="badge bg-info">Pendiente Ingreso</span>` :
+              (accion.solicitud_estado === 'pendiente' ?
+                `<span class="badge bg-warning">Pendiente</span>` :
+                (accion.solicitud_estado === 'negada' ?
+                  `<span class="badge bg-danger">Negada</span>` :
+                  (accion.solicitud_estado === 'en labor' ?
+                    `<span class="badge bg-primary">En Labor</span>` :
+                    (accion.solicitud_estado === 'labor detenida' ?
+                      `<span class="badge bg-secondary">Labor Detenida</span>` :
+                      `<span class="badge bg-secondary">${accion.solicitud_estado}</span>`)))))
+          }
+        </td>
+        <td>${accion.interventor}</td>
+        <td>${accion.estado_vigencia}</td>
+        <td>
+          ${accion.accion === 'pendiente' && accion.estado_vigencia === 'Vigente' ?
+            (accion.puede_aprobar === 'Aprobar' ?
+              `<button class="btn btn-success btn-sm" id="aprobarBtn-${accion.solicitud_id}">Aprobar</button>` :
+              `<span class="badge bg-warning">Pendiente de Aprobación</span>`) :
+            (accion.accion === 'pendiente' && accion.estado_vigencia === 'Vencida' ?
+              `<span class="badge bg-danger">No Aprobada - Vencida</span>` :
+              (accion.accion === 'aprobada' && (accion.solicitud_estado === 'en labor' || accion.solicitud_estado === 'aprobada') && accion.estado_vigencia === 'Vigente' ?
+                `<button class="btn btn-danger text-white bg-red-600 hover:bg-red-700 py-2 px-4 rounded-md text-xs" onclick="manejarLabor(${accion.solicitud_id}, this, 'detener')">Detener Labor</button>` :
+                (accion.accion === 'aprobada' && accion.solicitud_estado === 'en labor' && accion.estado_vigencia === 'Vencida' ?
+                  `<span class="badge bg-danger">En Labor - Vencida</span>` :
+                  (accion.accion === 'aprobada' && accion.solicitud_estado === 'labor detenida' && accion.estado_vigencia === 'Vigente' ?
+                    `<button class="btn btn-success text-white bg-green-600 hover:bg-green-700 py-2 px-4 rounded-md text-xs" onclick="manejarLabor(${accion.solicitud_id}, this, 'reanudar')">Reanudar Labor</button>` :
+                    (accion.accion === 'aprobada' && accion.solicitud_estado === 'labor detenida' && accion.estado_vigencia === 'Vencida' ?
+                      `<span class="badge bg-danger">Labor Detenida - Vencida</span>` :
+                      (accion.accion === 'aprobada' && accion.solicitud_estado === 'aprobada' && accion.estado_vigencia === 'Vencida' ?
+                        `<span class="badge bg-danger">Aprobada - Vencida</span>` :
+                        (accion.accion === 'negada' ?
+                          `<span class="badge bg-danger">Negada${accion.estado_vigencia === 'Vencida' ? ' - Vencida' : ''}</span>` :
+                          `<span class="badge bg-secondary">Estado Desconocido</span>`)))))))
+          }
+        </td>
+        ${username === "COA" ? `
+          <td>
+            <button class="btn btn-danger btn-sm eliminar-solicitud" data-solicitud-id="${accion.solicitud_id}">Eliminar</button>
+          </td>` : ''}
+        <td>
+          ${accion.puede_ver_qr === 'Ver QR' && accion.estado_vigencia !== 'Vencida' ?
+            `<button class="btn btn-info btn-sm" id="verQR-${accion.solicitud_id}">Ver QR</button>` :
+            `<span class="badge bg-danger">No disponible</span>`}
+        </td>
+        <td>
+          <button class="btn btn-info btn-sm" id="verDETALLES-${accion.solicitud_id}">Ver</button>
+        </td>
+        ${username === "COA" ? `
+          <td>
+            <button class="btn btn-info btn-sm ver-historial" data-solicitud-id="${accion.solicitud_id}">Ver Historial</button>
+          </td>` : ''}
+      `;
+      tbody.appendChild(row);
     });
-    document.querySelectorAll('[id^="verQR-"]').forEach(btn => {
-      btn.addEventListener('click', () => manejarVerQR(btn));
-      console.log('[DEBUG] Evento asignado a verQR:', btn.id);
-    });
-    document.querySelectorAll('[id^="verDETALLES-"]').forEach(btn => {
-      btn.addEventListener('click', () => manejarVerDetalles(btn));
-      console.log('[DEBUG] Evento asignado a verDETALLES:', btn.id);
-    });
-    document.querySelectorAll('.ver-historial').forEach(btn => {
-      btn.addEventListener('click', () => manejarVerHistorial(btn));
-      console.log('[DEBUG] Evento asignado a ver-historial:', btn.getAttribute('data-solicitud-id'));
-    });
-    // No necesitamos reasignar eventos para manejarLabor aquí porque usa onclick directamente
+  } else {
+    console.log('[DEBUG] No hay acciones para mostrar');
+    tbody.innerHTML = `<tr><td colspan="${username === "COA" ? 14 : 13}" class="text-center">No hay acciones para revisar.</td></tr>`;
   }
-
-  // Llamar a reasignarEventos al cargar la página para los botones iniciales
-  document.addEventListener('DOMContentLoaded', function() {
-    console.log('[DEBUG] DOM cargado, asignando eventos iniciales');
-    reasignarEventos();
-  });
-</script>
-
+  console.log('[DEBUG] Tabla actualizada, reasignando eventos');
+  reasignarEventos();
+}
+    function reasignarEventos() {
+      console.log('[DEBUG] Reasignando eventos');
+      document.querySelectorAll('[id^="aprobarBtn-"]').forEach(btn => {
+        btn.addEventListener('click', () => manejarAprobar(btn));
+        console.log('[DEBUG] Evento asignado a aprobarBtn:', btn.id);
+      });
+      document.querySelectorAll('[id^="verQR-"]').forEach(btn => {
+        btn.addEventListener('click', () => manejarVerQR(btn));
+        console.log('[DEBUG] Evento asignado a verQR:', btn.id);
+      });
+      document.querySelectorAll('[id^="verDETALLES-"]').forEach(btn => {
+        btn.addEventListener('click', () => manejarVerDetalles(btn));
+        console.log('[DEBUG] Evento asignado a verDETALLES:', btn.id);
+      });
+      document.querySelectorAll('.ver-historial').forEach(btn => {
+        btn.addEventListener('click', () => manejarVerHistorial(btn));
+        console.log('[DEBUG] Evento asignado a ver-historial:', btn.getAttribute('data-solicitud-id'));
+      });
+      document.querySelectorAll('.eliminar-solicitud').forEach(btn => {
+        btn.addEventListener('click', function () {
+          const solicitudId = this.getAttribute('data-solicitud-id');
+          Swal.fire({
+            title: '¿Estás seguro?',
+            text: 'Esta acción eliminará la solicitud y todos los archivos asociados. No se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              $.ajax({
+                url: '/eliminar-solicitud',
+                method: 'POST',
+                data: { solicitud_id: solicitudId },
+                success: function (response) {
+                  Swal.fire('Eliminado!', 'La solicitud ha sido eliminada correctamente.', 'success').then(() => {
+                    window.location.reload();
+                  });
+                },
+                error: function (xhr) {
+                  Swal.fire('Error!', 'No se pudo eliminar la solicitud: ' + xhr.responseText, 'error');
+                }
+              });
+            }
+          });
+        });
+        console.log('[DEBUG] Evento asignado a eliminar-solicitud:', btn.getAttribute('data-solicitud-id'));
+      });
+    }
+  </script>
 </body>
 </html>

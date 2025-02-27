@@ -2,51 +2,46 @@ const express = require('express');
 const controller = require('../controllers/interventor.controller');
 const router = express.Router();
 
-// Rutas existentes
-router.get('/obtener-historial/:solicitudId', controller.obtenerHistorialRegistros);
-router.post('/filtrar-solicitudes', controller.filtrarSolicitudes);
-
-router.post('/eliminar-solicitud', controller.eliminarSolicitud);
-// Nuevas rutas para descargar Excel
-router.get('/descargar-excel/unico/:solicitudId', controller.descargarExcelUnico);
-router.get('/descargar-excel/global', controller.descargarExcelGlobal);
-
-// Validar funciones necesarias del controlador
-const requiredFunctions = {
+// Lista de rutas requeridas con sus métodos y funciones correspondientes en el controlador
+const requiredRoutes = {
   'GET /vista-interventor': 'vistaInterventor',
   'POST /aprobar-solicitud-interventor': 'aprobarSolicitud',
   'GET /generar-qr/:id': 'generarQR',
   'PUT /solicitudes/:solicitudId/detener-labor': 'detenerLabor',
   'PUT /solicitudes/:solicitudId/reanudar-labor': 'reanudarLabor',
   'GET /obtener-detalles-solicitud/:id': 'obtenerDetallesSolicitud',
-  'GET /descargar-excel/unico/:solicitudId': 'descargarExcelUnico', // Nueva ruta
-  'GET /descargar-excel/global': 'descargarExcelGlobal', // Nueva ruta
+  'GET /obtener-historial/:solicitudId': 'obtenerHistorialRegistros',
+  'POST /filtrar-solicitudes': 'filtrarSolicitudes',
+  'POST /eliminar-solicitud': 'eliminarSolicitud',
+  'GET /descargar-excel-unico/:solicitudId': 'descargarExcelUnico',  // Updated path
+  'GET /descargar-excel-global': 'descargarExcelGlobal',            // Updated path
 };
 
-// Verificar que las funciones están definidas en el controlador
-Object.entries(requiredFunctions).forEach(([route, funcName]) => {
+// Verificar que todas las funciones requeridas estén definidas en el controlador
+Object.entries(requiredRoutes).forEach(([route, funcName]) => {
   if (typeof controller[funcName] !== 'function') {
     throw new Error(`[ERROR] La función '${funcName}' requerida para la ruta '${route}' no está definida en el controlador.`);
   }
 });
 
-// Función genérica para manejar rutas
+// Función genérica para manejar rutas con manejo de errores
 const handleRoute = (method, path, handlerName) => {
   router[method.toLowerCase()](path, async (req, res) => {
-    console.log(`[RUTAS] ${method} ${path}`);
+    console.log(`[RUTAS] ${method} ${path} - Procesando solicitud`);
     try {
       await controller[handlerName](req, res);
     } catch (err) {
       console.error(`[ERROR] En la ruta '${method} ${path}':`, err.message);
-      res.status(500).send(`Error al procesar la solicitud en '${method} ${path}'`);
+      res.status(500).send(`Error al procesar la solicitud en '${method} ${path}': ${err.message}`);
     }
   });
 };
 
-// Registrar las rutas dinámicamente
-Object.entries(requiredFunctions).forEach(([route, funcName]) => {
+// Registrar todas las rutas dinámicamente
+Object.entries(requiredRoutes).forEach(([route, funcName]) => {
   const [method, path] = route.split(' ');
   handleRoute(method, path, funcName);
 });
 
+// Exportar el router
 module.exports = router;
