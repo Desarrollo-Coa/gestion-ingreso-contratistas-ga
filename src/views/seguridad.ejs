@@ -171,11 +171,12 @@
     <script>
 let modalData = null; // Define modalData globally
  
- document.addEventListener('DOMContentLoaded', () => {
-     modalData = <%- JSON.stringify(typeof modalData !== 'undefined' ? modalData : null) %>;
+
+document.addEventListener('DOMContentLoaded', () => {
+    modalData = <%- JSON.stringify(typeof modalData !== 'undefined' ? modalData : null) %>;
 
     if (modalData) {
-        // Prellenar los detalles de la solicitud en el modaldocument.getElementById('detalleId').value = modalData.id || 'N/A';
+        // Prellenar los detalles de la solicitud en el modal
         document.getElementById('detalleId').value = modalData.id || 'N/A';
         document.getElementById('detalleEmpresa').textContent = modalData.empresa || 'N/A';
         document.getElementById('detalleId').textContent = modalData.id || 'N/A';
@@ -183,7 +184,6 @@ let modalData = null; // Define modalData globally
         document.getElementById('detalleLabor').textContent = modalData.labor || 'N/A';
         document.getElementById('detalleInterventor').textContent = modalData.interventor || 'N/A';
         document.getElementById('advertencia').textContent = modalData.advertencia || '';
-
 
         // Formatear fechas
         const formatFecha = (fecha) => {
@@ -227,7 +227,7 @@ let modalData = null; // Define modalData globally
                         <div class="card-body">
                             <h6 class="card-title">${col.nombre}</h6>
                             <p class="card-text">Cédula: ${col.cedula}</p>
-                            <input type="checkbox"  class="colaborador-checkbox" value="${col.id}">
+                            <input type="checkbox" class="colaborador-checkbox" value="${col.id}">
                         </div>
                     </div>
                 `;
@@ -236,35 +236,58 @@ let modalData = null; // Define modalData globally
         } else {
             colaboradoresContainer.innerHTML = '<p>No hay colaboradores disponibles.</p>';
         }
-        if (modalData.advertencia == null) {
-        // Configurar botón "Registrar Ingreso"
+
+        // Configurar botones de ingreso, entrada y salida
         const registrarIngresoBtn = document.getElementById('registrarIngresoBtn');
         const registrarEntradaBtn = document.getElementById('registrarEntradaBtn');
         const registrarSalidaBtn = document.getElementById('registrarSalidaBtn');
-        // Aquellos donde el boton estara desactivado para registrar salida y entrada
+
+        // Definir los estados en los cuales los botones de ingreso, entrada y salida no están permitidos
         const estadosNoPermitidos = [
             'en labor',
             'en labor - vencida',
             'labor detenida',
-            'pendiente ingreso - vencido'
+            'pendiente ingreso - vencido',
+            'pendiente ingreso - vencida', // Estado adicional para 'pendiente ingreso vencida'
+            'en labor - vencida' // Estado adicional para 'en labor vencida'
         ];
 
-        if (estadosNoPermitidos.includes(modalData.estado)) {
-            console.log("Estado no permitido: ", modalData.estado)
+        // Deshabilitar los botones si el estado está en los estados no permitidos o si hay una advertencia
+        if (estadosNoPermitidos.includes(modalData.estado) || modalData.advertencia !== null) {
+            console.log("Estado no permitido o advertencia: ", modalData.estado, modalData.advertencia);
 
+            // Deshabilitar botones de ingreso, entrada y salida
             registrarIngresoBtn.disabled = true;
             registrarIngresoBtn.classList.add('btn-secondary');
             registrarIngresoBtn.textContent = 'No disponible';
- 
 
+            registrarEntradaBtn.disabled = true;
+            registrarEntradaBtn.classList.add('btn-secondary');
+            registrarEntradaBtn.textContent = 'No disponible';
+
+            registrarSalidaBtn.disabled = true;
+            registrarSalidaBtn.classList.add('btn-secondary');
+            registrarSalidaBtn.textContent = 'No disponible';
         } else {
-            console.log("Estado permitido: ", modalData.estado)
+            console.log("Estado permitido para ingreso, entrada y salida: ", modalData.estado);
 
+            // Habilitar los botones si el estado es permitido
             registrarIngresoBtn.disabled = false;
             registrarIngresoBtn.classList.remove('btn-secondary');
             registrarIngresoBtn.classList.add('btn-primary');
             registrarIngresoBtn.textContent = 'Registrar Ingreso';
 
+            registrarEntradaBtn.disabled = false;
+            registrarEntradaBtn.classList.remove('btn-secondary');
+            registrarEntradaBtn.classList.add('btn-danger');
+            registrarEntradaBtn.textContent = 'Registrar Entrada';
+
+            registrarSalidaBtn.disabled = false;
+            registrarSalidaBtn.classList.remove('btn-secondary');
+            registrarSalidaBtn.classList.add('btn-success');
+            registrarSalidaBtn.textContent = 'Registrar Salida';
+
+            // Acción del botón de "Registrar Ingreso"
             registrarIngresoBtn.onclick = async () => {
                 try {
                     const registerResponse = await fetch(`/api/solicitudes/${modalData.id}/registrar-ingreso`, {
@@ -296,15 +319,6 @@ let modalData = null; // Define modalData globally
                 }
             };
         }
-
-        }else{
-            
-            registrarIngresoBtn.disabled = true;
-            registrarIngresoBtn.classList.add('btn-secondary');
-            registrarIngresoBtn.textContent = 'No se permite ingreso';
-        }
-
-       
 
         // Mostrar el modal
         const modal = new bootstrap.Modal(document.getElementById('detallesModal'));
@@ -439,7 +453,6 @@ confirmarRegistroBtn.addEventListener('click', async () => {
 });
 
 
-
 async function verDetalles(id) {
     try {       
         const response = await fetch(`/api/solicitudes/${id}`);
@@ -466,11 +479,9 @@ async function verDetalles(id) {
         document.getElementById('advertencia').textContent = data.advertencia || '';
 
         // Actualización de clases del estado dinámico
-  
-  
         const estadoElement = document.getElementById('detalleEstado');
         estadoElement.textContent = data.estado_actual; // Usar el estado calculado desde el servidor
-        estadoElement.className = 'badge '; // Reiniciar clases
+        estadoElement.className = 'badge'; // Reiniciar clases
 
         // Aplicar clases dinámicas basado en estado_actual
         if (data.estado_actual.includes('pendiente ingreso')) {
@@ -484,7 +495,6 @@ async function verDetalles(id) {
         } else {
             estadoElement.classList.add('bg-success');
         }
-
 
         // Formatear fechas
         const formatFecha = (fecha) => {
@@ -512,7 +522,6 @@ async function verDetalles(id) {
                             <h6 class="card-title">${col.nombre}</h6>
                             <p class="card-text">Cédula: ${col.cedula}</p>
                             <input type="checkbox" class="colaborador-checkbox" value="${col.id}">
-
                         </div>
                     </div>
                 `;
@@ -522,31 +531,33 @@ async function verDetalles(id) {
             colaboradoresContainer.innerHTML = '<p>No hay colaboradores disponibles.</p>';
         }
 
-        if (data.advertencia == null) {
-               // Configurar botón "Registrar Ingreso"
+        // Configurar botones de ingreso, salida y entrada
         const registrarIngresoBtn = document.getElementById('registrarIngresoBtn');
-        const estadosNoPermitidos = [
+        const registrarEntradaBtn = document.getElementById('registrarEntradaBtn');
+        const registrarSalidaBtn = document.getElementById('registrarSalidaBtn');
+
+        // Definir los estados en los cuales registrar ingreso no está permitido
+        const estadosNoPermitidosIngreso = [
             'en labor',
             'en labor - vencida',
             'labor detenida',
-            'pendiente ingreso - vencido'
+            'pendiente ingreso - vencido',
+            'pendiente ingreso - vencida', // Incluir pendiente ingreso vencida
+            'en labor - vencida',           // Incluir en labor vencida
         ];
 
-        
-        if (estadosNoPermitidos.includes(data.estado_actual)) {
-            console.log("Estado no permitido: ", estadosNoPermitidos)
+        // Deshabilitar "Registrar Ingreso" cuando el estado esté en los estadosNoPermitidosIngreso
+        if (estadosNoPermitidosIngreso.includes(data.estado_actual) || data.advertencia !== null) {
+            console.log("Estado no permitido para registrar ingreso o hay advertencia: ", data.estado_actual, data.advertencia);
             registrarIngresoBtn.disabled = true;
             registrarIngresoBtn.classList.add('btn-secondary');
             registrarIngresoBtn.textContent = 'No disponible';
-        } 
-        else {
-            console.log("Estado permitido: ", data.estado_actual    )
-
+        } else {
+            console.log("Estado permitido para registrar ingreso: ", data.estado_actual);
             registrarIngresoBtn.disabled = false;
             registrarIngresoBtn.classList.remove('btn-secondary');
             registrarIngresoBtn.classList.add('btn-primary');
             registrarIngresoBtn.textContent = 'Registrar Ingreso';
- 
 
             registrarIngresoBtn.onclick = async () => {
                 try {
@@ -580,16 +591,31 @@ async function verDetalles(id) {
             };
         }
 
-        }else{
-              
-            registrarIngresoBtn.disabled = true;
-            registrarIngresoBtn.classList.add('btn-secondary');
-            registrarIngresoBtn.textContent = 'No se permite ingreso';
+        // Deshabilitar los botones de "Entrada" y "Salida" si existe una advertencia o si el estado es 'pendiente ingreso - vencido' o 'en labor - vencida'
+        if (data.advertencia !== null || data.estado_actual === 'pendiente ingreso - vencido' || data.estado_actual === 'en labor - vencida') {
+            console.log("Advertencia o estado no permitido para entrada y salida: ", data.advertencia, data.estado_actual);
+
+            // Deshabilitar y cambiar el estilo de los botones de entrada y salida
+            registrarSalidaBtn.disabled = true; 
+            registrarSalidaBtn.textContent = 'No disponible';
+
+            registrarEntradaBtn.disabled = true; 
+            registrarEntradaBtn.textContent = 'No disponible';
+        } else {
+            console.log("Estado permitido para entrada y salida: ", data.estado_actual);
+
+            // Habilitar y cambiar el estilo de los botones de salida y entrada
+            registrarSalidaBtn.disabled = false; 
+            registrarSalidaBtn.textContent = 'Registrar Salida';
+
+            registrarEntradaBtn.disabled = false; 
+            registrarEntradaBtn.textContent = 'Registrar Entrada';
         }
-     
+
         // Mostrar el modal
         const modal = new bootstrap.Modal(document.getElementById('detallesModal'));
         modal.show();
+
     } catch (error) {
         Swal.fire({
             icon: 'error',
@@ -599,7 +625,6 @@ async function verDetalles(id) {
         console.error(error);
     }
 }
-
 
         function buscar() {
             const id = document.getElementById('buscarId').value;
