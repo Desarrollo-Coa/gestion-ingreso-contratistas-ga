@@ -1,7 +1,7 @@
 const express = require('express');
 const controller = require('../controllers/interventor.controller');
 const router = express.Router();
-
+  
 // Lista de rutas requeridas con sus métodos y funciones correspondientes en el controlador
 const requiredRoutes = {
   'GET /vista-interventor': 'vistaInterventor',
@@ -15,8 +15,8 @@ const requiredRoutes = {
   'POST /eliminar-solicitud': 'eliminarSolicitud',
   'GET /descargar-excel-unico/:solicitudId': 'descargarExcelUnico',  // Updated path
   'GET /descargar-excel-global': 'descargarExcelGlobal',            // Updated path
-};
-
+}; 
+router.get('/obtener-datos-tablas', controller.obtenerDatosTablas);
 // Verificar que todas las funciones requeridas estén definidas en el controlador
 Object.entries(requiredRoutes).forEach(([route, funcName]) => {
   if (typeof controller[funcName] !== 'function') {

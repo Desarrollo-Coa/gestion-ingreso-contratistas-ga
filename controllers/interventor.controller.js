@@ -715,5 +715,78 @@ const obtenerHistorialGlobal = async () => {
   const [rows] = await connection.execute(query);
   return rows;
 };
+ 
+
+controller.obtenerDatosTablas = async (req, res) => {
+  const token = req.cookies.token;
+  const { yearSolicitudes, monthSolicitudes, yearColaboradores, monthColaboradores, yearInterventores, monthInterventores } = req.query;
+
+  if (!token) {
+    return res.status(401).json({ message: 'No autorizado' });
+  }
+
+  try {
+    console.log('[DEBUG] SECRET_KEY:', SECRET_KEY);
+    const decoded = jwt.verify(token, SECRET_KEY);
+    
+    
+    const { role } = decoded;
+
+    // Solo verificamos que sea un usuario autenticado, no restringimos por rol 'interventor'
+    // if (role !== 'interventor') {
+    //   return res.status(403).json({ message: 'Acceso denegado' });
+    // }
+
+    // 1. Solicitudes por Puesto (Lugar)
+    let querySolicitudesPorPuesto = `
+      SELECT s.lugar, COUNT(*) AS cantidad
+      FROM solicitudes s
+      ${yearSolicitudes ? 'WHERE YEAR(s.created_at) = ?' : ''}
+      ${monthSolicitudes ? `${yearSolicitudes ? 'AND' : 'WHERE'} MONTH(s.created_at) = ?` : ''}
+      GROUP BY s.lugar
+    `;
+    const solicitudesParams = [];
+    if (yearSolicitudes) solicitudesParams.push(yearSolicitudes);
+    if (monthSolicitudes) solicitudesParams.push(monthSolicitudes);
+    const [solicitudesPorPuesto] = await connection.execute(querySolicitudesPorPuesto, solicitudesParams);
+
+    // 2. Colaboradores por Contratista (usando s.empresa)
+    let queryColaboradoresPorContratista = `
+      SELECT s.empresa AS contratista, COUNT(DISTINCT c.cedula) AS cantidad
+      FROM colaboradores c
+      JOIN solicitudes s ON c.solicitud_id = s.id
+      ${yearColaboradores ? 'WHERE YEAR(s.created_at) = ?' : ''}
+      ${monthColaboradores ? `${yearColaboradores ? 'AND' : 'WHERE'} MONTH(s.created_at) = ?` : ''}
+      GROUP BY s.empresa
+    `;
+    const colaboradoresParams = [];
+    if (yearColaboradores) colaboradoresParams.push(yearColaboradores);
+    if (monthColaboradores) colaboradoresParams.push(monthColaboradores);
+    const [colaboradoresPorContratista] = await connection.execute(queryColaboradoresPorContratista, colaboradoresParams);
+
+    // 3. Solicitudes por Interventor
+    let querySolicitudesPorInterventor = `
+      SELECT u.username AS interventor, COUNT(*) AS cantidad
+      FROM solicitudes s
+      JOIN users u ON s.interventor_id = u.id
+      ${yearInterventores ? 'WHERE YEAR(s.created_at) = ?' : ''}
+      ${monthInterventores ? `${yearInterventores ? 'AND' : 'WHERE'} MONTH(s.created_at) = ?` : ''}
+      GROUP BY u.username
+    `;
+    const interventoresParams = [];
+    if (yearInterventores) interventoresParams.push(yearInterventores);
+    if (monthInterventores) interventoresParams.push(monthInterventores);
+    const [solicitudesPorInterventor] = await connection.execute(querySolicitudesPorInterventor, interventoresParams);
+
+    res.json({
+      solicitudesPorPuesto,
+      colaboradoresPorContratista,
+      solicitudesPorInterventor
+    });
+  } catch (err) {
+    console.error('[ERROR] Error al obtener datos de tablas:', err);
+    res.status(500).json({ message: 'Error al obtener datos de tablas' });
+  }
+};
 
 module.exports = controller; 
