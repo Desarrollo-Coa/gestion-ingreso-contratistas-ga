@@ -159,7 +159,39 @@ controller.qrAccesosModal = async (req, res) => {
 
         const { id, username } = decoded;
 
-        // Usar la misma lógica que getSolicitudDetalles
+        // Obtener todas las solicitudes para la tabla principal
+        const [solicitud] = await connection.execute(`
+            SELECT 
+                s.id, 
+                s.empresa, 
+                s.nit, 
+                s.estado, 
+                us.username AS interventor, 
+                s.lugar, 
+                l.nombre_lugar,
+                DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
+                DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
+                CASE
+                    WHEN s.estado = 'aprobada' AND CURDATE() > DATE(s.fin_obra) THEN 'pendiente ingreso - vencido'
+                    WHEN s.estado = 'aprobada' THEN 'pendiente ingreso'
+                    WHEN s.estado = 'en labor' AND CURDATE() > DATE(s.fin_obra) THEN 'en labor - vencida'
+                    WHEN s.estado = 'en labor' THEN 'en labor'
+                    WHEN s.estado = 'labor detenida' THEN 'labor detenida'
+                    ELSE s.estado
+                END AS estado_actual
+            FROM solicitudes s
+            JOIN acciones a ON s.id = a.solicitud_id
+            JOIN users us ON us.id = s.interventor_id
+            JOIN lugares l ON l.nombre_lugar = s.lugar
+            JOIN users seguridad ON l.nombre_lugar = seguridad.username
+            WHERE s.estado IN ('aprobada', 'en labor', 'labor detenida')
+            AND a.accion = 'aprobada'
+            AND seguridad.role_id = (SELECT id FROM roles WHERE role_name = 'seguridad')
+            AND seguridad.id = ?
+            ORDER BY s.id DESC
+        `, [id]);
+
+        // Obtener detalles de la solicitud específica
         const [solicitudDetails] = await connection.execute(`
             SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
                 DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra,
@@ -182,7 +214,7 @@ controller.qrAccesosModal = async (req, res) => {
         `, [idS]);
 
         if (!solicitudDetails.length) {
-            return res.status(404).json({ message: 'Solicitud no encontrada' });
+            return res.redirect('/vista-seguridad');
         }
 
         const lugarSolicitud = solicitudDetails[0].lugar;
@@ -195,16 +227,48 @@ controller.qrAccesosModal = async (req, res) => {
             [idS]
         );
 
-        // Enviar la respuesta en formato JSON como getSolicitudDetalles
-        res.json({
-            ...solicitudDetails[0],
-            colaboradores,
-            advertencia: mensajeAdvertencia,
+        // Configurar estados de botones
+        const estadosNoPermitidosIngreso = [
+            'en labor',
+            'en labor - vencida',
+            'labor detenida',
+            'pendiente ingreso - vencido',
+            'pendiente ingreso - vencida',
+            'en labor - vencida'
+        ];
+
+        const estadoActual = solicitudDetails[0].estado_actual;
+        const botonesEstado = {
+            registrarIngreso: {
+                disabled: estadosNoPermitidosIngreso.includes(estadoActual) || mensajeAdvertencia !== null,
+                text: estadosNoPermitidosIngreso.includes(estadoActual) || mensajeAdvertencia !== null ? 'No disponible' : 'Registrar Ingreso'
+            },
+            registrarEntrada: {
+                disabled: mensajeAdvertencia !== null || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida',
+                text: mensajeAdvertencia !== null || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida' ? 'No disponible' : 'Registrar Entrada'
+            },
+            registrarSalida: {
+                disabled: mensajeAdvertencia !== null || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida',
+                text: mensajeAdvertencia !== null || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida' ? 'No disponible' : 'Registrar Salida'
+            }
+        };
+
+        // Renderizar la vista con los datos actualizados
+        res.render('seguridad', {
+            solicitud,
+            modalData: {
+                ...solicitudDetails[0],
+                colaboradores,
+                advertencia: mensajeAdvertencia,
+                botonesEstado
+            },
+            title: 'Control de Seguridad - Grupo Argos',
             username: username
         });
+
     } catch (error) {
         console.error('Error al procesar la solicitud:', error);
-        res.status(500).json({ message: 'Error interno del servidor' });
+        res.redirect('/vista-seguridad');
     }
 };
 
@@ -358,5 +422,107 @@ controller.registrarSalida = async (req, res) => {
     }
 };
 
+// Agregar nuevo controlador para vista-seguridad/:id
+controller.vistaSeguridadDetalle = async (req, res) => {
+    const idS = req.params.id;
+    try {
+        const token = req.cookies.token;
+
+        if (!token) {
+            return res.redirect('/login');
+        }
+
+        const decoded = jwt.verify(token, SECRET_KEY);
+        if (decoded.role !== 'seguridad') {
+            return res.redirect('/login');
+        }
+
+        const { id, username } = decoded;
+
+        // Obtener todas las solicitudes para la tabla principal
+        const [solicitud] = await connection.execute(`
+            SELECT 
+                s.id, 
+                s.empresa, 
+                s.nit, 
+                s.estado, 
+                us.username AS interventor, 
+                s.lugar, 
+                l.nombre_lugar,
+                DATE_FORMAT(s.inicio_obra, '%d/%m/%Y') AS inicio_obra,
+                DATE_FORMAT(s.fin_obra, '%d/%m/%Y') AS fin_obra,
+                CASE
+                    WHEN s.estado = 'aprobada' AND CURDATE() > DATE(s.fin_obra) THEN 'pendiente ingreso - vencido'
+                    WHEN s.estado = 'aprobada' THEN 'pendiente ingreso'
+                    WHEN s.estado = 'en labor' AND CURDATE() > DATE(s.fin_obra) THEN 'en labor - vencida'
+                    WHEN s.estado = 'en labor' THEN 'en labor'
+                    WHEN s.estado = 'labor detenida' THEN 'labor detenida'
+                    ELSE s.estado
+                END AS estado_actual
+            FROM solicitudes s
+            JOIN acciones a ON s.id = a.solicitud_id
+            JOIN users us ON us.id = s.interventor_id
+            JOIN lugares l ON l.nombre_lugar = s.lugar
+            JOIN users seguridad ON l.nombre_lugar = seguridad.username
+            WHERE s.estado IN ('aprobada', 'en labor', 'labor detenida')
+            AND a.accion = 'aprobada'
+            AND seguridad.role_id = (SELECT id FROM roles WHERE role_name = 'seguridad')
+            AND seguridad.id = ?
+            ORDER BY s.id DESC
+        `, [id]);
+
+        // Obtener detalles de la solicitud específica
+        const [solicitudDetails] = await connection.execute(`
+            SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
+                DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra,
+                DATE_FORMAT(fin_obra, '%Y-%m-%d') AS fin_obra,
+                CASE
+                    WHEN estado = 'aprobada' AND CURDATE() > DATE(fin_obra) THEN 'pendiente ingreso - vencido'
+                    WHEN estado = 'aprobada' THEN 'pendiente ingreso'
+                    WHEN estado = 'en labor' AND CURDATE() > DATE(fin_obra) THEN 'en labor - vencida'
+                    WHEN estado = 'en labor' THEN 'en labor'
+                    WHEN estado = 'labor detenida' THEN 'labor detenida'
+                    ELSE estado
+                END AS estado_actual,
+                lugar,
+                labor
+            FROM solicitudes s
+            LEFT JOIN users us ON us.id = s.interventor_id
+            LEFT JOIN acciones a ON a.solicitud_id = s.id
+            WHERE s.id = ? AND estado IN ('aprobada', 'en labor', 'labor detenida')
+            AND a.accion = 'aprobada'
+        `, [idS]);
+
+        if (!solicitudDetails.length) {
+            return res.status(404).json({ message: 'Solicitud no encontrada' });
+        }
+
+        const lugarSolicitud = solicitudDetails[0].lugar;
+        const mensajeAdvertencia = lugarSolicitud !== username
+            ? 'ADVERTENCIA: El lugar de la solicitud no coincide con tu ubicación. Notifica a la central la novedad.'
+            : null;
+
+        const [colaboradores] = await connection.execute(
+            'SELECT id, nombre, cedula, foto FROM colaboradores WHERE solicitud_id = ?',
+            [idS]
+        );
+
+        // Renderizar la vista con los datos
+        res.render('seguridad', {
+            solicitud,
+            modalData: {
+                ...solicitudDetails[0],
+                colaboradores,
+                advertencia: mensajeAdvertencia
+            },
+            title: 'Control de Seguridad - Grupo Argos',
+            username: username
+        });
+
+    } catch (error) {
+        console.error('Error al procesar la solicitud:', error);
+        res.status(500).send('Error interno del servidor');
+    }
+};
 
 module.exports = controller; 
