@@ -69,6 +69,7 @@ controller.vistaSeguridad = async (req, res) => {
 };
  
 
+  
 controller.getSolicitudDetalles = async (req, res) => {
     const { id } = req.params;
     try {
@@ -78,9 +79,7 @@ controller.getSolicitudDetalles = async (req, res) => {
         }
 
         const decoded = jwt.verify(token, SECRET_KEY);
-        const { username } = decoded; // Obtenemos el nombre de usuario del token
-
-
+        const { username } = decoded;
 
         const [solicitud] = await connection.execute(
             `
@@ -88,15 +87,10 @@ controller.getSolicitudDetalles = async (req, res) => {
                 DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra,
                 DATE_FORMAT(fin_obra, '%Y-%m-%d') AS fin_obra,
                 CASE
-                    -- Si está aprobada y la fecha de fin ya pasó
                     WHEN estado = 'aprobada' AND CURDATE() > DATE(fin_obra) THEN 'pendiente ingreso - vencido'
-                    -- Si está aprobada y aún no ha vencido
                     WHEN estado = 'aprobada' THEN 'pendiente ingreso'
-                    -- Si está en labor y vencida
                     WHEN estado = 'en labor' AND CURDATE() > DATE(fin_obra) THEN 'en labor - vencida'
-                    -- Si está en labor
                     WHEN estado = 'en labor' THEN 'en labor'
-                    -- Si está detenida
                     WHEN estado = 'labor detenida' THEN 'labor detenida'
                     ELSE estado
                 END AS estado_actual,
@@ -115,14 +109,14 @@ controller.getSolicitudDetalles = async (req, res) => {
             return res.status(404).json({ message: 'Solicitud no encontrada' });
         }
 
-        
-        // Verificar si el lugar de la solicitud coincide con el lugar del usuario de seguridad
+        // Modificación: Si el lugar es 'Supervisor', no mostrar advertencia y permitir todos los lugares
         const lugarSolicitud = solicitud[0].lugar;
-        const mensajeAdvertencia = lugarSolicitud !== username
-            ? 'ADVERTENCIA: El lugar de la solicitud no coincide con tu ubicación. Notifica a la central la novedad.'
-            : null;
+        const mensajeAdvertencia = lugarSolicitud === 'Supervisor' 
+            ? null 
+            : (lugarSolicitud !== username 
+                ? 'ADVERTENCIA: El lugar de la solicitud no coincide con tu ubicación. Notifica a la central la novedad.' 
+                : null);
 
-        // Obtener colaboradores asociados a la solicitud
         const [colaboradores] = await connection.execute(
             'SELECT id, nombre, cedula, foto FROM colaboradores WHERE solicitud_id = ?',
             [id]
@@ -140,10 +134,8 @@ controller.getSolicitudDetalles = async (req, res) => {
     }
 };
 
-
-
 controller.qrAccesosModal = async (req, res) => {
-    const idS  = req.params.id;
+    const idS = req.params.id;
  
     try {
         const token = req.cookies.token;
@@ -159,7 +151,6 @@ controller.qrAccesosModal = async (req, res) => {
 
         const { id, username } = decoded;
 
-        // Obtener todas las solicitudes para la tabla principal
         const [solicitud] = await connection.execute(`
             SELECT 
                 s.id, 
@@ -191,7 +182,7 @@ controller.qrAccesosModal = async (req, res) => {
             ORDER BY s.id DESC
         `, [id]);
 
-        // Obtener detalles de la solicitud específica
+        // Consulta corregida
         const [solicitudDetails] = await connection.execute(`
             SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
                 DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra,
@@ -218,16 +209,17 @@ controller.qrAccesosModal = async (req, res) => {
         }
 
         const lugarSolicitud = solicitudDetails[0].lugar;
-        const mensajeAdvertencia = lugarSolicitud !== username
-            ? 'ADVERTENCIA: El lugar de la solicitud no coincide con tu ubicación. Notifica a la central la novedad.'
-            : null;
+        const mensajeAdvertencia = lugarSolicitud === 'Supervisor' 
+            ? null 
+            : (lugarSolicitud !== username 
+                ? 'ADVERTENCIA: El lugar de la solicitud no coincide con tu ubicación. Notifica a la central la novedad.' 
+                : null);
 
         const [colaboradores] = await connection.execute(
             'SELECT id, nombre, cedula, foto FROM colaboradores WHERE solicitud_id = ?',
             [idS]
         );
 
-        // Configurar estados de botones
         const estadosNoPermitidosIngreso = [
             'en labor',
             'en labor - vencida',
@@ -240,20 +232,19 @@ controller.qrAccesosModal = async (req, res) => {
         const estadoActual = solicitudDetails[0].estado_actual;
         const botonesEstado = {
             registrarIngreso: {
-                disabled: estadosNoPermitidosIngreso.includes(estadoActual) || mensajeAdvertencia !== null,
-                text: estadosNoPermitidosIngreso.includes(estadoActual) || mensajeAdvertencia !== null ? 'No disponible' : 'Registrar Ingreso'
+                disabled: estadosNoPermitidosIngreso.includes(estadoActual) || (mensajeAdvertencia !== null && lugarSolicitud !== 'Supervisor'),
+                text: estadosNoPermitidosIngreso.includes(estadoActual) || (mensajeAdvertencia !== null && lugarSolicitud !== 'Supervisor') ? 'No disponible' : 'Registrar Ingreso'
             },
             registrarEntrada: {
-                disabled: mensajeAdvertencia !== null || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida',
-                text: mensajeAdvertencia !== null || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida' ? 'No disponible' : 'Registrar Entrada'
+                disabled: (mensajeAdvertencia !== null && lugarSolicitud !== 'Supervisor') || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida',
+                text: (mensajeAdvertencia !== null && lugarSolicitud !== 'Supervisor') || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida' ? 'No disponible' : 'Registrar Entrada'
             },
             registrarSalida: {
-                disabled: mensajeAdvertencia !== null || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida',
-                text: mensajeAdvertencia !== null || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida' ? 'No disponible' : 'Registrar Salida'
+                disabled: (mensajeAdvertencia !== null && lugarSolicitud !== 'Supervisor') || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida',
+                text: (mensajeAdvertencia !== null && lugarSolicitud !== 'Supervisor') || estadoActual === 'pendiente ingreso - vencido' || estadoActual === 'en labor - vencida' ? 'No disponible' : 'Registrar Salida'
             }
         };
 
-        // Renderizar la vista con los datos actualizados
         res.render('seguridad', {
             solicitud,
             modalData: {

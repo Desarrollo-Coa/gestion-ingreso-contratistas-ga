@@ -446,11 +446,13 @@ controller.obtenerHistorialRegistros = async (req, res) => {
       DATE_FORMAT(r.fecha_hora, '%Y-%m-%d %H:%i:%s') AS fecha_hora,
       r.estado_actual,
       s.lugar,
-      DATE_FORMAT(r.created_at,  '%Y-%m-%d %H:%i:%s') AS registro_hecho
+      DATE_FORMAT(r.created_at, '%Y-%m-%d %H:%i:%s') AS registro_hecho,
+      us.username AS usuario_registro  -- Nombre del usuario que realizó el registro
     FROM registros r
     JOIN colaboradores c ON r.colaborador_id = c.id
     JOIN solicitudes s ON r.solicitud_id = s.id
-    JOIN users u ON s.usuario_id = u.id
+    JOIN users u ON s.usuario_id = u.id  -- Usuario que creó la solicitud
+    JOIN users us ON r.usuario_id = us.id  -- Usuario que realizó el registro
     WHERE r.solicitud_id = ?
     ORDER BY r.fecha_hora DESC;
   `;
@@ -584,6 +586,7 @@ controller.filtrarSolicitudes = async (req, res) => {
 };
 
 // Descargar historial único
+
 controller.descargarExcelUnico = async (req, res) => {
   const { solicitudId } = req.params;
 
@@ -599,6 +602,7 @@ controller.descargarExcelUnico = async (req, res) => {
       { header: 'NIT', key: 'nit', width: 20 },
       { header: 'Tipo', key: 'tipo', width: 15 },
       { header: 'Lugar', key: 'lugar', width: 20 },
+      { header: 'Usuario Registro', key: 'usuario_registro', width: 20 }, // Nueva columna
       { header: 'H. Registro', key: 'registro_hecho', width: 20 },
       { header: 'Fecha y Hora', key: 'fecha_hora', width: 20 },
       { header: 'Estado', key: 'estado', width: 20 },
@@ -611,6 +615,7 @@ controller.descargarExcelUnico = async (req, res) => {
         nit: registro.nit,
         tipo: registro.tipo,
         lugar: registro.lugar,
+        usuario_registro: registro.usuario_registro, // Nuevo campo
         registro_hecho: new Date(registro.registro_hecho).toLocaleString(),
         fecha_hora: new Date(registro.fecha_hora).toLocaleString(),
         estado: registro.estado_actual,
@@ -627,7 +632,6 @@ controller.descargarExcelUnico = async (req, res) => {
     res.status(500).send('Error al generar el archivo Excel');
   }
 };
-
 // Descargar historial global
 controller.descargarExcelGlobal = async (req, res) => {
   try {
@@ -642,6 +646,7 @@ controller.descargarExcelGlobal = async (req, res) => {
       { header: 'NIT', key: 'nit', width: 20 },
       { header: 'Tipo', key: 'tipo', width: 15 },
       { header: 'Lugar', key: 'lugar', width: 20 },
+      { header: 'Usuario Registro', key: 'usuario_registro', width: 20 }, // Nueva columna
       { header: 'H. Registro', key: 'registro_hecho', width: 20 },
       { header: 'Fecha y Hora', key: 'fecha_hora', width: 20 },
       { header: 'Estado', key: 'estado', width: 20 },
@@ -654,6 +659,7 @@ controller.descargarExcelGlobal = async (req, res) => {
         nit: registro.nit,
         tipo: registro.tipo,
         lugar: registro.lugar,
+        usuario_registro: registro.usuario_registro, // Nuevo campo
         registro_hecho: new Date(registro.registro_hecho).toLocaleString(),
         fecha_hora: new Date(registro.fecha_hora).toLocaleString(),
         estado: registro.estado_actual,
@@ -670,8 +676,8 @@ controller.descargarExcelGlobal = async (req, res) => {
     res.status(500).send('Error al generar el archivo Excel');
   }
 };
-
 // Función auxiliar para historial único
+
 const obtenerHistorialRegistros = async (solicitudId) => {
   const query = `
     SELECT 
@@ -682,19 +688,22 @@ const obtenerHistorialRegistros = async (solicitudId) => {
       r.fecha_hora,
       r.estado_actual,
       s.lugar,
-      r.created_at AS registro_hecho
+      r.created_at AS registro_hecho,
+      us.username AS usuario_registro 
     FROM registros r
     JOIN colaboradores c ON r.colaborador_id = c.id
     JOIN solicitudes s ON r.solicitud_id = s.id
     JOIN users u ON s.usuario_id = u.id
+    JOIN users us ON r.usuario_id = us.id
     WHERE r.solicitud_id = ?
-    ORDER BY r.fecha_hora DESC
+    ORDER BY r.created_at DESC
   `;
   const [rows] = await connection.execute(query, [solicitudId]);
   return rows;
 };
 
 // Función auxiliar para historial global
+
 const obtenerHistorialGlobal = async () => {
   const query = `
     SELECT 
@@ -705,17 +714,18 @@ const obtenerHistorialGlobal = async () => {
       r.fecha_hora,
       r.estado_actual,
       s.lugar,
-      r.created_at AS registro_hecho
+      r.created_at AS registro_hecho,
+      us.username AS usuario_registro   
     FROM registros r
     JOIN colaboradores c ON r.colaborador_id = c.id
     JOIN solicitudes s ON r.solicitud_id = s.id
     JOIN users u ON s.usuario_id = u.id
+    JOIN users us ON r.usuario_id = us.id
     ORDER BY r.fecha_hora DESC
   `;
   const [rows] = await connection.execute(query);
   return rows;
 };
- 
 
 controller.obtenerDatosTablas = async (req, res) => {
   const token = req.cookies.token;

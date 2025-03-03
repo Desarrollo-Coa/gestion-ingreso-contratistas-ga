@@ -237,7 +237,7 @@
     </div>
   </div>
 
-  <!-- Modals (unchanged for brevity) -->
+
   <div class="modal fade" id="historialModal" tabindex="-1" aria-labelledby="historialModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -254,7 +254,8 @@
                 <th>NIT</th>
                 <th>Tipo</th>
                 <th>Lugar</th>
-                <th>H.Registro</th>
+                <th>Usuario Registro</th> <!-- Nueva columna -->
+                <th>H. Registro</th>
                 <th>Fecha y Hora</th>
                 <th>Estado</th>
               </tr>
@@ -690,32 +691,34 @@
     });
 
     function manejarVerHistorial(btn) {
-      const solicitudId = btn.getAttribute('data-solicitud-id');
-      fetch(`/obtener-historial/${solicitudId}`)
-        .then(response => response.json())
-        .then(data => {
-          const tableBody = document.getElementById('historialTableBody');
-          tableBody.innerHTML = '';
-          data.forEach(registro => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${registro.nombre_colaborador}</td>
-              <td>${registro.empresa}</td>
-              <td>${registro.nit}</td>
-              <td>${registro.tipo}</td>
-              <td>${registro.lugar}</td>
-              <td>${registro.registro_hecho}</td>
-              <td>${registro.fecha_hora}</td>
-              <td>${registro.estado_actual}</td>
-            `;
-            tableBody.appendChild(row);
-          });
-          const modal = document.getElementById('historialModal');
-          modal.dataset.solicitudId = solicitudId;
-          new bootstrap.Modal(modal).show();
-        })
-        .catch(error => console.error('[ERROR] Error al obtener el historial:', error));
-    }
+  const solicitudId = btn.getAttribute('data-solicitud-id');
+  fetch(`/obtener-historial/${solicitudId}`)
+    .then(response => response.json())
+    .then(data => {
+      const tableBody = document.getElementById('historialTableBody');
+      tableBody.innerHTML = '';
+      data.forEach(registro => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${registro.nombre_colaborador}</td>
+          <td>${registro.empresa}</td>
+          <td>${registro.nit}</td>
+          <td>${registro.tipo}</td>
+          <td>${registro.lugar}</td>
+          <td>${registro.usuario_registro}</td> <!-- Nueva columna -->
+          <td>${registro.registro_hecho}</td>
+          <td>${registro.fecha_hora}</td>
+          <td>${registro.estado_actual}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+      const modal = document.getElementById('historialModal');
+      modal.dataset.solicitudId = solicitudId;
+      new bootstrap.Modal(modal).show();
+    })
+    .catch(error => console.error('[ERROR] Error al obtener el historial:', error));
+}
+
     function actualizarTabla(acciones) {
   console.log('[DEBUG] Entrando en actualizarTabla con acciones:', acciones);
   const tbody = document.querySelector('#tablaSolicitudes tbody');

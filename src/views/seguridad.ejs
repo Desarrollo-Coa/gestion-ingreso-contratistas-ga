@@ -239,128 +239,32 @@ document.addEventListener('DOMContentLoaded', () => {
             colaboradoresContainer.innerHTML = '<p>No hay colaboradores disponibles.</p>';
         }
 
-        // Configurar botones de ingreso, entrada y salida
+        // Configurar botones de ingreso, salida y entrada
         const registrarIngresoBtn = document.getElementById('registrarIngresoBtn');
         const registrarEntradaBtn = document.getElementById('registrarEntradaBtn');
         const registrarSalidaBtn = document.getElementById('registrarSalidaBtn');
 
-        // Estados no permitidos para acciones
-        const estadosNoPermitidos = [
-            'en labor',
+        // Definir los estados vencidos
+        const estadosVencidos = [
             'en labor - vencida',
             'labor detenida',
             'pendiente ingreso - vencido',
             'en labor - vencida'
         ];
 
-        // Lógica para deshabilitar/habilitar botones
-        if (modalData.advertencia !== null || modalData.estado_actual === 'pendiente ingreso - vencido' || modalData.estado_actual === 'en labor - vencida') {
-            console.log("Advertencia o estado no permitido para entrada y salida: ", modalData.advertencia, modalData.estado_actual);
-
-            // Deshabilitar y cambiar el estilo de los botones de entrada y salida
-            registrarSalidaBtn.disabled = true;
-            registrarSalidaBtn.textContent = 'No disponible';
-            registrarSalidaBtn.classList.add('btn-secondary');
-            registrarSalidaBtn.classList.remove('btn-primary');
-
-            registrarEntradaBtn.disabled = true;
-            registrarEntradaBtn.textContent = 'No disponible';
-            registrarEntradaBtn.classList.add('btn-secondary');
-            registrarEntradaBtn.classList.remove('btn-primary');
-        } else {
-            console.log("Estado permitido para entrada y salida: ", modalData.estado_actual);
-
-            // Habilitar y cambiar el estilo de los botones de salida y entrada
-            registrarSalidaBtn.disabled = false;
-            registrarSalidaBtn.textContent = 'Registrar Salida';
-            registrarSalidaBtn.classList.remove('btn-secondary');
-            registrarSalidaBtn.classList.add('btn-primary');
-
-            registrarEntradaBtn.disabled = false;
-            registrarEntradaBtn.textContent = 'Registrar Entrada';
-            registrarEntradaBtn.classList.remove('btn-secondary');
-            registrarEntradaBtn.classList.add('btn-primary');
-
-            // Acción del botón "Registrar Entrada"
-            registrarEntradaBtn.onclick = async () => {
-                try {
-                    const response = await fetch(`/api/solicitudes/${modalData.id}/registrar-entrada`, {
-                        method: 'PUT',
-                    });
-
-                    if (response.ok) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Entrada registrada',
-                            text: 'La entrada se ha registrado correctamente.',
-                        });
-                        registrarEntradaBtn.disabled = true;
-                        registrarEntradaBtn.textContent = 'Registrada';
-                    } else {
-                        const errorData = await response.json();
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: errorData.message || 'No se pudo registrar la entrada.',
-                        });
-                    }
-                } catch (err) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Ocurrió un error al intentar registrar la entrada.',
-                    });
-                }
-            };
-
-            // Acción del botón "Registrar Salida"
-            registrarSalidaBtn.onclick = async () => {
-                try {
-                    const response = await fetch(`/api/solicitudes/${modalData.id}/registrar-salida`, {
-                        method: 'PUT',
-                    });
-
-                    if (response.ok) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Salida registrada',
-                            text: 'La salida se ha registrado correctamente.',
-                        });
-                        registrarSalidaBtn.disabled = true;
-                        registrarSalidaBtn.textContent = 'Registrada';
-                    } else {
-                        const errorData = await response.json();
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: errorData.message || 'No se pudo registrar la salida.',
-                        });
-                    }
-                } catch (err) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Ocurrió un error al intentar registrar la salida.',
-                    });
-                }
-            };
-        }
-
-        // Lógica para el botón "Registrar Ingreso"
-        if (estadosNoPermitidos.includes(estadoActual) || modalData.advertencia !== null) {
-            console.log("Estado no permitido o advertencia: ", estadoActual, modalData.advertencia);
+        // Deshabilitar "Registrar Ingreso" cuando el estado esté en los estadosVencidos o sea 'en labor'
+        if (estadosVencidos.includes(modalData.estado_actual) || modalData.advertencia !== null || modalData.estado_actual === 'en labor') {
+            console.log("Estado no permitido para registrar ingreso o hay advertencia: ", modalData.estado_actual, modalData.advertencia);
             registrarIngresoBtn.disabled = true;
             registrarIngresoBtn.classList.add('btn-secondary');
-            registrarIngresoBtn.classList.remove('btn-primary');
             registrarIngresoBtn.textContent = 'No disponible';
         } else {
-            console.log("Estado permitido para ingreso: ", estadoActual);
+            console.log("Estado permitido para registrar ingreso: ", modalData.estado_actual);
             registrarIngresoBtn.disabled = false;
             registrarIngresoBtn.classList.remove('btn-secondary');
             registrarIngresoBtn.classList.add('btn-primary');
             registrarIngresoBtn.textContent = 'Registrar Ingreso';
 
-            // Acción del botón "Registrar Ingreso"
             registrarIngresoBtn.onclick = async () => {
                 try {
                     const registerResponse = await fetch(`/api/solicitudes/${modalData.id}/registrar-ingreso`, {
@@ -391,6 +295,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             };
+        } 
+
+        // Deshabilitar los botones de "Entrada" y "Salida" si existe una advertencia o si el estado está en estadosVencidos
+        if (modalData.advertencia !== null || estadosVencidos.includes(modalData.estado_actual)) {
+            console.log("Advertencia o estado vencido no permitido para entrada y salida: ", modalData.estado_actual);
+
+            // Deshabilitar y cambiar el estilo de los botones de entrada y salida
+            registrarSalidaBtn.disabled = true;
+            registrarSalidaBtn.textContent = 'No disponible';
+            registrarSalidaBtn.classList.add('btn-secondary');
+            registrarSalidaBtn.classList.remove('btn-primary');
+
+            registrarEntradaBtn.disabled = true;
+            registrarEntradaBtn.textContent = 'No disponible';
+            registrarEntradaBtn.classList.add('btn-secondary');
+            registrarEntradaBtn.classList.remove('btn-primary');
+        } else {
+            console.log("Estado permitido para entrada y salida: ", modalData.estado_actual);
+
+            // Habilitar y cambiar el estilo de los botones de salida y entrada
+            registrarSalidaBtn.disabled = false;
+            registrarSalidaBtn.textContent = 'Registrar Salida';
+            registrarSalidaBtn.classList.remove('btn-secondary');
+            registrarSalidaBtn.classList.add('btn-primary');
+
+            registrarEntradaBtn.disabled = false;
+            registrarEntradaBtn.textContent = 'Registrar Entrada';
+            registrarEntradaBtn.classList.remove('btn-secondary');
+            registrarEntradaBtn.classList.add('btn-primary');
         }
 
         // Mostrar el modal
@@ -608,18 +541,16 @@ async function verDetalles(id) {
         const registrarEntradaBtn = document.getElementById('registrarEntradaBtn');
         const registrarSalidaBtn = document.getElementById('registrarSalidaBtn');
 
-        // Definir los estados en los cuales registrar ingreso no está permitido
-        const estadosNoPermitidosIngreso = [
-            'en labor',
+        // Definir los estados vencidos
+        const estadosVencidos = [
             'en labor - vencida',
             'labor detenida',
             'pendiente ingreso - vencido',
-            'pendiente ingreso - vencida', // Incluir pendiente ingreso vencida
-            'en labor - vencida',           // Incluir en labor vencida
+            'en labor - vencida'
         ];
 
-        // Deshabilitar "Registrar Ingreso" cuando el estado esté en los estadosNoPermitidosIngreso
-        if (estadosNoPermitidosIngreso.includes(data.estado_actual) || data.advertencia !== null) {
+        // Deshabilitar "Registrar Ingreso" cuando el estado esté en los estadosVencidos o sea 'en labor'
+        if (estadosVencidos.includes(data.estado_actual) || data.advertencia !== null || data.estado_actual === 'en labor') {
             console.log("Estado no permitido para registrar ingreso o hay advertencia: ", data.estado_actual, data.advertencia);
             registrarIngresoBtn.disabled = true;
             registrarIngresoBtn.classList.add('btn-secondary');
@@ -662,25 +593,34 @@ async function verDetalles(id) {
                 }
             };
         } 
-        // Deshabilitar los botones de "Entrada" y "Salida" si existe una advertencia o si el estado es 'pendiente ingreso - vencido' o 'en labor - vencida'
-        if (data.advertencia !== null || data.estado_actual === 'pendiente ingreso - vencido' || data.estado_actual === 'en labor - vencida') {
-            console.log("Advertencia o estado no permitido para entrada y salida: ", data.advertencia, data.estado_actual);
+
+        // Deshabilitar los botones de "Entrada" y "Salida" si existe una advertencia o si el estado está en estadosVencidos
+        if (data.advertencia !== null || estadosVencidos.includes(data.estado_actual)) {
+            console.log("Advertencia o estado vencido no permitido para entrada y salida: ", data.estado_actual);
 
             // Deshabilitar y cambiar el estilo de los botones de entrada y salida
-            registrarSalidaBtn.disabled = true; 
+            registrarSalidaBtn.disabled = true;
             registrarSalidaBtn.textContent = 'No disponible';
+            registrarSalidaBtn.classList.add('btn-secondary');
+            registrarSalidaBtn.classList.remove('btn-primary');
 
-            registrarEntradaBtn.disabled = true; 
+            registrarEntradaBtn.disabled = true;
             registrarEntradaBtn.textContent = 'No disponible';
+            registrarEntradaBtn.classList.add('btn-secondary');
+            registrarEntradaBtn.classList.remove('btn-primary');
         } else {
             console.log("Estado permitido para entrada y salida: ", data.estado_actual);
 
             // Habilitar y cambiar el estilo de los botones de salida y entrada
-            registrarSalidaBtn.disabled = false; 
+            registrarSalidaBtn.disabled = false;
             registrarSalidaBtn.textContent = 'Registrar Salida';
+            registrarSalidaBtn.classList.remove('btn-secondary');
+            registrarSalidaBtn.classList.add('btn-primary');
 
-            registrarEntradaBtn.disabled = false; 
+            registrarEntradaBtn.disabled = false;
             registrarEntradaBtn.textContent = 'Registrar Entrada';
+            registrarEntradaBtn.classList.remove('btn-secondary');
+            registrarEntradaBtn.classList.add('btn-primary');
         }
 
         // Mostrar el modal
