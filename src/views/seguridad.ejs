@@ -13,7 +13,10 @@
         .ocultar { display: none; }
         #advertencia { color: #ff0000; }
         .colaborador-checkbox { height: 20px; width: 20px; }
+        
     </style>
+
+    
 </head>
 <body>
     <!-- Barra de navegación -->
@@ -23,14 +26,27 @@
     </nav>
 
     <div class="container mt-5">
+      
         <!-- Buscador y Botón Escanear QR -->
-        <div class="mb-4 d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <input type="text" id="buscarId" class="form-control me-3 w-50 w-md-25" placeholder="Buscar por ID">
-                <button class="btn btn-primary" onclick="buscar()">Buscar</button>
-            </div>
-            <button class="btn btn-secondary ocultar" onclick="escanearQR()">Escanear QR</button>
-        </div>
+<div class="mb-4 d-flex justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2 w-75 w-md-50">
+      <input 
+        type="text" 
+        id="buscarId" 
+        class="form-control" 
+        placeholder="Buscar por ID de Colaborador" 
+        inputmode="numeric" 
+        pattern="[0-9]+" 
+        title="Ingrese solo números" 
+        required>
+      <button class="btn btn-primary" onclick="buscar()">
+        <i class="bi bi-search me-1"></i> Buscar
+      </button>
+    </div>
+    <button class="btn btn-secondary" onclick="escanearQR()">
+      <i class="bi bi-qr-code-scan me-1"></i> Escanear QR
+    </button>
+  </div>
 
         <!-- 
         <div class="table-responsive">
@@ -372,9 +388,8 @@
             overlay.innerHTML = `
                 <div style="position: relative; width: 100%; max-width: 400px; margin: auto; height: auto; aspect-ratio: 3/4; border-radius: 10px; overflow: hidden; background-color: #000;">
                     <video id="cameraVideo" style="width: 100%; height: 100%;" playsinline></video>
-                    <div style="position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 10px;">
+                    <div style="position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: center; padding: 0 10px;">
                         <button id="closeCamera" style="background: red; color: white; border: none; padding: 5px 10px; border-radius: 5px;">Cerrar</button>
-                        <button id="switchCamera" style="background: blue; color: white; border: none; padding: 5px 10px; border-radius: 5px;">Cambiar cámara</button>
                     </div>
                 </div>
             `;
@@ -384,18 +399,20 @@
             const video = document.getElementById('cameraVideo');
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
-            let currentFacingMode = 'environment';
             let stream = null;
 
-            const startCamera = async (facingMode) => {
+            const startCamera = async () => {
                 try {
-                    if (stream) stream.getTracks().forEach(track => track.stop());
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                     video.srcObject = stream;
                     video.play();
                     scanQRCode();
                 } catch (err) {
-                    alert('Error al acceder a la cámara: ' + err.message);
+                    Swal.fire({ 
+                        icon: 'error', 
+                        title: 'Error', 
+                        text: 'No se pudo acceder a la cámara. Por favor, verifica los permisos.' 
+                    });
                     document.body.removeChild(overlay);
                 }
             };
@@ -410,11 +427,8 @@
                         const code = jsQR(imageData.data, canvas.width, canvas.height);
 
                         if (code) {
-                            const qrUrl = code.data;
-                            let id = qrUrl.includes('/') ? qrUrl.split('/').pop() : qrUrl;
-                            id = id.trim();
                             stopCamera();
-                            window.location.href = `/vista-seguridad/${id}`;
+                            window.location.href = code.data;
                             return;
                         }
                         requestAnimationFrame(scan);
@@ -428,12 +442,8 @@
                 document.body.removeChild(overlay);
             };
 
-            startCamera(currentFacingMode);
+            startCamera();
             document.getElementById('closeCamera').onclick = stopCamera;
-            document.getElementById('switchCamera').onclick = () => {
-                currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-                startCamera(currentFacingMode);
-            };
         }
     </script>
 </body>
