@@ -376,76 +376,82 @@
 
         // Escanear QR (sin cambios, pero podría modularizarse si se repite en otro lugar)
         function escanearQR() {
-            const overlay = document.createElement('div');
-            overlay.style.position = 'fixed';
-            overlay.style.top = 0;
-            overlay.style.left = 0;
-            overlay.style.width = '100%';
-            overlay.style.height = '100%';
-            overlay.style.background = 'rgba(0, 0, 0, 0.8)';
-            overlay.style.zIndex = 1000;
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.background = 'rgba(0, 0, 0, 0.8)';
+    overlay.style.zIndex = '1000';
 
-            overlay.innerHTML = `
-                <div style="position: relative; width: 100%; max-width: 400px; margin: auto; height: auto; aspect-ratio: 3/4; border-radius: 10px; overflow: hidden; background-color: #000;">
-                    <video id="cameraVideo" style="width: 100%; height: 100%;" playsinline></video>
-                    <div style="position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: center; padding: 0 10px;">
-                        <button id="closeCamera" style="background: red; color: white; border: none; padding: 5px 10px; border-radius: 5px;">Cerrar</button>
-                    </div>
-                </div>
-            `;
+    overlay.innerHTML = `
+        <div style="position: relative; width: 100%; max-width: 400px; margin: 0 auto; height: auto; aspect-ratio: 3/4; border-radius: 10px; overflow: hidden; background-color: #000;">
+            <video id="cameraVideo" style="width: 100%; height: 100%;" playsinline></video>
+            <div style="position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: center; padding: 0 10px;">
+                <button id="closeCamera" style="background: red; color: white; border: none; padding: 5px 10px; border-radius: 5px;">Cerrar</button>
+            </div>
+        </div>
+    `;
 
-            document.body.appendChild(overlay);
+    document.body.appendChild(overlay);
 
-            const video = document.getElementById('cameraVideo');
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            let stream = null;
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    let stream = null;
 
-            const startCamera = async () => {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                    video.srcObject = stream;
-                    video.play();
-                    scanQRCode();
-                } catch (err) {
-                    Swal.fire({ 
-                        icon: 'error', 
-                        title: 'Error', 
-                        text: 'No se pudo acceder a la cámara. Por favor, verifica los permisos.' 
-                    });
-                    document.body.removeChild(overlay);
-                }
-            };
-
-            const scanQRCode = () => {
-                const scan = () => {
-                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                        const code = jsQR(imageData.data, canvas.width, canvas.height);
-
-                        if (code) {
-                            stopCamera();
-                            window.location.href = code.data;
-                            return;
-                        }
-                        requestAnimationFrame(scan);
-                    }
-                };
-                scan();
-            };
-
-            const stopCamera = () => {
-                if (stream) stream.getTracks().forEach(track => track.stop());
-                document.body.removeChild(overlay);
-            };
-
-            startCamera();
-            document.getElementById('closeCamera').onclick = stopCamera;
+    const startCamera = async () => {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = stream;
+            video.play();
+            scanQRCode();
+        } catch (err) {
+            Swal.fire({ 
+                icon: 'error', 
+                title: 'Error', 
+                text: 'No se pudo acceder a la cámara. Por favor, verifica los permisos.' 
+            });
+            document.body.removeChild(overlay);
         }
-    </script>
+    };
+
+    const scanQRCode = () => {
+        const scan = () => {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+                if (code) {
+                    console.log("QR detectado:", code.data); // Para depurar
+                    stopCamera(); 
+                    window.open(code.data, '_blank'); // Abre en una nueva pestaña
+                    return;
+                }
+                requestAnimationFrame(scan); // Continúa escaneando si no hay QR
+            } else {
+                requestAnimationFrame(scan); // Si el video no está listo, sigue intentando
+            }
+        };
+        scan();
+    };
+
+    const stopCamera = () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        document.body.removeChild(overlay);
+    };
+
+    startCamera();
+    document.getElementById('closeCamera').onclick = stopCamera;
+}
+    
+        </script>
 </body>
 </html>
 
