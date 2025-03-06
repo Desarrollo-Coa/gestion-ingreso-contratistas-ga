@@ -1,189 +1,100 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Solicitud de Contratistas</title>
-  <script src="https://cdn.tailwindcss.com"></script> <!-- CDN de Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.2/sweetalert.min.js"></script>
+  <link rel="stylesheet" href="/css/contratista.css"> <!-- Archivo CSS externo -->
 </head>
-<style>
-  #contentMayor {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  body>div>.form1,
-  #personasListado {
-    height: 90vh;
-  }
-</style>
-<!-- Barra de navegación -->
-<nav class="flex justify-between items-center bg-gray-800 text-white p-4" id="nav">
-  <a class="text-lg font-semibold" href="#">Vista Contratista GA</a>
-  <a class="text-lg" href="/logout">Cerrar sesión</a>
-</nav>
-
-
 <body class="font-sans bg-gray-100">
+  <!-- Barra de navegación -->
+  <nav class="flex justify-between items-center bg-gray-800 text-white p-4">
+    <a class="text-lg font-semibold" href="#">Vista Contratista GA</a>
+    <a class="text-lg" href="/logout">Cerrar sesión</a>
+  </nav>
 
-  <!-- Contenedor principal, flex y 100vh -->
+  <!-- Contenedor principal -->
   <div class="min-h-screen flex flex-col md:flex-row" id="contentMayor">
-
-    <!-- Sección del formulario -->
-    <div class="flex-1 bg-white p-6 md:w-1/2 overflow-auto form1">
+    <!-- Formulario -->
+    <div class="flex-1 bg-white p-6 md:w-1/2 overflow-auto" id="contratistaFormulario">
       <h1 class="text-center text-2xl font-bold mb-6">Solicitud de Ingreso</h1>
-
       <form id="formulario" method="POST" enctype="multipart/form-data" class="space-y-6">
-
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-
-          <!-- Información de la Empresa -->
-          <div class="mb-4">
+          <div>
             <label for="empresa" class="block text-sm font-semibold text-gray-700">Empresa</label>
-            <input type="text" name="empresa" id="empresa" class="mt-1 p-2 border border-gray-300 rounded-md w-full"
-              value="<%= empresa %>" required readonly>
+            <input type="text" name="empresa" id="empresa" class="mt-1 p-2 border border-gray-300 rounded-md w-full" value="<%= empresa %>" required readonly>
           </div>
-
-          <div class="mb-4">
+          <div>
             <label for="nit" class="block text-sm font-semibold text-gray-700">NIT</label>
-            <input type="text" name="nit" id="nit" class="mt-1 p-2 border border-gray-300 rounded-md w-full"
-              value="<%= nit %>" required readonly>
+            <input type="text" name="nit" id="nit" class="mt-1 p-2 border border-gray-300 rounded-md w-full" value="<%= nit %>" required readonly>
           </div>
-<!-- 
-          <div class="mb-4">
+          <div class="relative">
             <label for="lugar" class="block text-sm font-semibold text-gray-700">Lugar</label>
-            <input type="text" name="lugar" id="lugar" class="mt-1 p-2 border border-gray-300 rounded-md w-full"
-              required>
+            <input type="text" name="lugar" id="lugar" class="mt-1 p-2 border border-gray-300 rounded-md w-full" placeholder="Escribe para buscar..." required autocomplete="off">
+            <ul id="lugares-list" class="absolute w-full bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto hidden">
+              <% lugares.forEach(lugar => { %>
+                <li class="p-2 hover:bg-gray-200 cursor-pointer" data-value="<%= lugar.nombre_lugar %>"><%= lugar.nombre_lugar %></li>
+              <% }); %>
+            </ul>
+            <p id="error-lugar" class="text-red-500 text-sm hidden">Debes seleccionar un lugar válido.</p>
           </div>
--->
-                    <!-- Lugar -->
-                    <div class="mb-4 relative">
-                      <label for="lugar" class="block text-sm font-semibold text-gray-700">Lugar</label>
-                      <input type="text" name="lugar" id="lugar" 
-                             class="mt-1 p-2 border border-gray-300 rounded-md w-full" 
-                             placeholder="Escribe para buscar..." required autocomplete="off">
-                      
-                      <!-- Lista de lugares (se oculta y muestra con JS) -->
-                      <ul id="lugares-list" class="absolute w-full bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto hidden">
-                          <% lugares.forEach(lugar => { %>
-                              <li class="p-2 hover:bg-gray-200 cursor-pointer" data-value="<%= lugar.nombre_lugar %>">
-                                  <%= lugar.nombre_lugar %>
-                              </li>
-                          <% }); %>
-                      </ul>
-                      
-                      <p id="error-lugar" class="text-red-500 text-sm hidden">Debes seleccionar un lugar válido.</p>
-                  </div>
-
-
-          
-
-          <!-- Labor -->
-          <div class="mb-4">
+          <div>
             <label for="labor" class="block text-sm font-semibold text-gray-700">Labor</label>
-            <input type="text" name="labor" id="labor" class="mt-1 p-2 border border-gray-300 rounded-md w-full"
-              required>
+            <input type="text" name="labor" id="labor" class="mt-1 p-2 border border-gray-300 rounded-md w-full" required>
           </div>
-
-          
-        <!-- Selector de Interventor -->
-        <div class="mb-4">
-          <label for="interventor_id" class="block text-sm font-semibold text-gray-700">Interventor</label>
-          <select name="interventor_id" id="interventor_id" class="mt-1 p-2 border border-gray-300 rounded-md w-full" required>
+          <div>
+            <label for="interventor_id" class="block text-sm font-semibold text-gray-700">Interventor</label>
+            <select name="interventor_id" id="interventor_id" class="mt-1 p-2 border border-gray-300 rounded-md w-full" required>
               <option value="" disabled selected>Seleccione un interventor</option>
-              <% interventores.forEach(function(interventor) { %>
-                  <option value="<%= interventor.id %>"><%= interventor.username %></option>
-              <% }) %>
-          </select>
-      </div>
-
-        </div>
-
-        <!-- Sección de colaboradores -->
-        <div class="mb-6">
-          <div class="text-lg font-semibold mb-3">Datos de Colaboradores</div>
-          <div id="personas-container">
-            <div class="person-group mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="remove-person w-4 h-4 text-red-500 cursor-pointer"
-                xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 511.991 511.991">
-                <path
-                  d="M286.161,255.867L505.745,36.283c8.185-8.474,7.951-21.98-0.523-30.165c-8.267-7.985-21.375-7.985-29.642,0L255.995,225.702L36.411,6.118c-8.475-8.185-21.98-7.95-30.165,0.524c-7.985,8.267-7.985,21.374,0,29.641L225.83,255.867L6.246,475.451c-8.328,8.331-8.328,21.835,0,30.165l0,0c8.331,8.328,21.835,8.328,30.165,0l219.584-219.584l219.584,219.584c8.331,8.328,21.835,8.328,30.165,0l0,0c8.328-8.331,8.328-21.835,0-30.165L286.161,255.867z" />
-              </svg>
-              <input type="number" placeholder="Cédula del Colaborador" name="cedula[]"
-                class="p-2 border border-gray-300 rounded-md w-full" required>
-              <input type="text" placeholder="Nombre del colaborador" name="nombre[]"
-                class="p-2 border border-gray-300 rounded-md w-full" required>
-              <label for="foto" class="block">Seleccionar Foto</label>
-              <input type="file" id="foto" name="foto[]" class="p-2 border border-gray-300 rounded-md w-full"
-                accept="image/*" required>
-              <span class="text-gray-500">Selecciona una foto del colaborador</span>
-
-              <label for="cedulaFoto" class="block">Seleccionar Cédula </label>
-              <input type="file" id="cedula" name="cedulaFoto[]" class="p-2 border border-gray-300 rounded-md w-full"
-                accept="image/*">
-              <span class="text-gray-500">Selecciona cédula del colaborador</span>
-
-            </div>
+              <% interventores.forEach(interventor => { %>
+                <option value="<%= interventor.id %>"><%= interventor.username %></option>
+              <% }); %>
+            </select>
           </div>
-
-          <button type="button" id="add-person" class="btn btn-primary bg-blue-500 text-white p-2 rounded-md">Agregar
-            Colaborador</button>
         </div>
 
-        <!-- Documentos de Seguridad Social -->
-        <div class="mb-6">
+        <!-- Colaboradores -->
+        <div>
+          <div class="text-lg font-semibold mb-3">Datos de Colaboradores</div>
+          <div id="personas-container"></div>
+          <button type="button" id="add-person" class="bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600">Agregar Colaborador</button>
+        </div>
+
+        <!-- Seguridad Social -->
+        <div>
           <div class="text-lg font-semibold mb-3">Seguridad Social de Trabajadores</div>
           <label for="arl" class="block text-sm font-semibold text-gray-700">Documento ARL</label>
           <input type="file" name="arl" id="arl" class="mt-1 p-2 border border-gray-300 rounded-md w-full">
-
-          <label for="pasocial" class="block text-sm font-semibold text-gray-700 mt-4">Planilla de Pago Seguridad
-            Social</label>
+          <label for="pasocial" class="block text-sm font-semibold text-gray-700 mt-4">Planilla de Pago Seguridad Social</label>
           <input type="file" name="pasocial" id="pasocial" class="mt-1 p-2 border border-gray-300 rounded-md w-full">
         </div>
 
         <!-- Fechas de Obra -->
-        <div class="mb-6">
+        <div>
           <div class="text-lg font-semibold mb-3">Fechas de Obra</div>
-
           <label for="inicio_obra" class="block text-sm font-semibold text-gray-700">Inicio de Obra</label>
-          <input type="date" name="inicio_obra" id="inicio-obra" class="p-2 border border-gray-300 rounded-md w-full"
-            required onchange="calcularDias()">
-
+          <input type="date" name="inicio_obra" id="inicio-obra" class="p-2 border border-gray-300 rounded-md w-full" required onchange="calcularDias()">
           <label for="fin_obra" class="block text-sm font-semibold text-gray-700 mt-4">Fin de Obra</label>
-          <input type="date" name="fin_obra" id="fin-obra" class="p-2 border border-gray-300 rounded-md w-full" required
-            onchange="calcularDias()">
-
-          <label for="dias_trabajo" class="block text-sm font-semibold text-gray-700 mt-4">Días Solicitados para
-            Trabajar</label>
-          <input type="text" name="dias_trabajo" id="dias-trabajo" class="p-2 border border-gray-300 rounded-md w-full"
-            readonly>
+          <input type="date" name="fin_obra" id="fin-obra" class="p-2 border border-gray-300 rounded-md w-full" required onchange="calcularDias()">
+          <label for="dias_trabajo" class="block text-sm font-semibold text-gray-700 mt-4">Días Solicitados para Trabajar</label>
+          <input type="text" name="dias_trabajo" id="dias-trabajo" class="p-2 border border-gray-300 rounded-md w-full" readonly>
         </div>
-
-
-        
 
         <div class="text-center">
-          <button type="submit" id="submitButton" class="btn bg-green-500 text-white p-2 rounded-md">Enviar</button>
+          <button type="submit" id="submitButton" class="bg-green-500 text-white p-2 rounded-md hover:bg-green-600">Enviar</button>
         </div>
-
-
-
-
       </form>
     </div>
- 
 
+    <!-- Listado de solicitudes -->
     <div class="flex-1 bg-gray-50 p-6 overflow-auto" id="personasListado">
       <div class="text-lg font-semibold mb-6">Solicitudes Realizadas</div>
-      <div class="list-group space-y-4">
+      <div class="space-y-4">
         <% solicitudes.forEach(solicitud => { %>
-          <div class="list-group-item p-4 bg-white rounded-md shadow-md">
+          <div class="p-4 bg-white rounded-md shadow-md">
             <p>Empresa: <%= solicitud.empresa %></p>
             <p>ID: <%= solicitud.id %></p>
             <p>Inicio de Obra: <%= solicitud.inicio_obra %></p>
@@ -192,513 +103,257 @@
             <p>Lugar: <%= solicitud.lugar %></p>
             <p>Labor: <%= solicitud.labor %></p>
             <p>Interventor: <%= solicitud.interventor %></p>
-            <p>Estado:
-              <% if (solicitud.estado_actual === 'aprobado por sst') { %>
-                <span class="estado text-yellow-500 font-semibold">Aprobado por SST</span>
-              <% } else if (solicitud.estado_actual === 'pendiente ingreso') { %>
-                <span class="estado text-yellow-500 font-semibold">Pendiente Ingreso</span>
-                <button class="btn btn-info text-white bg-blue-600 hover:bg-blue-700 py-2 px-4 rounded-md text-xs" id="verQR-<%= solicitud.id %>">Ver QR</button>
-              <% } else if (solicitud.estado_actual === 'en labor') { %>
-                <span class="estado text-blue-500 font-semibold">En labor</span>
-                <button class="btn btn-info text-white bg-blue-600 hover:bg-blue-700 py-2 px-4 rounded-md text-xs" id="verQR-<%= solicitud.id %>">Ver QR</button>
-              <% } else if (solicitud.estado_actual === 'labor detenida') { %>
-                <span class="estado text-gray-500 font-semibold">Labor detenida</span>
-              <% } else if (solicitud.estado_actual === 'pendiente ingreso - vencido') { %>
-                <span class="estado text-red-500 font-semibold">Pendiente Ingreso - Vencido</span>
-              <% } else if (solicitud.estado_actual === 'en labor - vencida') { %>
-                <span class="estado text-red-600 font-semibold">En Labor - Vencida</span> <!-- Color más fuerte para vencido -->
-              <% } else if (solicitud.estado_actual === 'negada') { %>
-                <span class="estado text-red-700 font-semibold">Negada</span> <!-- Color más oscuro para negada -->
-              <% } else { %>
-                <span class="estado text-green-500 font-semibold"><%= solicitud.estado_actual %></span>
-              <% } %>
-            </p>
+            <p>Estado: <span class="<%= getEstadoClass(solicitud.estado_actual) %>"><%= solicitud.estado_actual %></span></p>
             <p>Comentario: <span class="text-muted text-sm"><%= solicitud.comentario %></span></p>
-            
-            <!-- Botones de descarga y generación de documentos -->
             <div class="mt-4 flex space-x-2">
               <% const doc = solicitud_url_download.find(d => d.solicitud_id === solicitud.id); %>
               <% if (doc) { %>
-                <!-- Si existe la URL, mostrar botón de descarga -->
-                <a href="<%= doc.url %>" target="_blank" class="btn btn-success text-white bg-green-600 hover:bg-green-700 py-2 px-4 rounded-md text-xs">Descargar Documentos</a>
+                <a href="<%= doc.url %>" target="_blank" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 text-xs">Descargar Documentos</a>
               <% } else { %>
-                <!-- Si no existe la URL, mostrar mensaje -->
                 <p class="text-gray-600 text-sm">Podrá descargar sus archivos en cuanto sean habilitados por SST.</p>
-
-                 
               <% } %>
             </div>
           </div>
         <% }); %>
       </div>
     </div>
-
   </div>
 
-
-  <!-- Modal Background -->
+  <!-- Modal QR -->
   <div id="modalVerQR" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-50 flex justify-center items-center">
-    <!-- Modal Container -->
     <div class="bg-white w-11/12 sm:w-96 rounded-lg shadow-lg overflow-hidden">
-      <!-- Modal Header -->
       <div class="px-6 py-4 flex justify-between items-center border-b border-gray-200">
-        <h5 class="text-xl font-semibold text-gray-800" id="modalVerQRLabel">Ver Código QR</h5>
+        <h5 class="text-xl font-semibold text-gray-800">Ver Código QR</h5>
         <button type="button" class="text-gray-500 hover:text-gray-800" onclick="closeModal()">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-
-      <!-- Modal Body (QR Display) -->
-      <div class="px-6 py-4">
-        <div id="qr-container" class="text-center">
-          <!-- Aquí se insertará dinámicamente el QR -->
-        </div>
-      </div>
-
-      <!-- Modal Footer -->
+      <div class="px-6 py-4 text-center" id="qr-container"></div>
       <div class="px-6 py-3 flex justify-end border-t border-gray-200">
-        <button type="button" class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 focus:outline-none"
-          onclick="closeModal()">Cerrar</button>
+        <button type="button" class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600" onclick="closeModal()">Cerrar</button>
       </div>
     </div>
   </div>
 
-<!-- Loader overlay -->
-<div id="loader" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-  <!-- Loader spinner -->
-  <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-opacity-75"></div>
-  <!-- Texto opcional -->
-  <p class="ml-4 text-white text-lg">Procesando archivos...</p>
-</div>
-
-
-  <script>
-
-    
-    // Función para agregar más campos de personas
-    document.getElementById('add-person').addEventListener('click', function () {
-      const personasContainer = document.getElementById('personas-container');
-      const newPersonGroup = document.createElement('div');
-
-      // Asignar las clases que coincidan con el HTML original
-      newPersonGroup.classList.add('person-group', 'mb-4');
-
-      // Agregar el contenido HTML con las mismas clases y estructura
-      newPersonGroup.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" class="remove-person w-4 h-4 text-red-500 cursor-pointer"
-                xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 511.991 511.991">
-                <path
-                  d="M286.161,255.867L505.745,36.283c8.185-8.474,7.951-21.98-0.523-30.165c-8.267-7.985-21.375-7.985-29.642,0L255.995,225.702L36.411,6.118c-8.475-8.185-21.98-7.95-30.165,0.524c-7.985,8.267-7.985,21.374,0,29.641L225.83,255.867L6.246,475.451c-8.328,8.331-8.328,21.835,0,30.165l0,0c8.331,8.328,21.835,8.328,30.165,0l219.584-219.584l219.584,219.584c8.331,8.328,21.835,8.328,30.165,0l0,0c8.328-8.331,8.328-21.835,0-30.165L286.161,255.867z" />
-              </svg>
-              <input type="number" placeholder="Cédula del Colaborador" name="cedula[]"
-                class="p-2 border border-gray-300 rounded-md w-full" required>
-              <input type="text" placeholder="Nombre del colaborador" name="nombre[]"
-                class="p-2 border border-gray-300 rounded-md w-full" required>
-              <label for="foto" class="block">Seleccionar Foto</label>
-              <input type="file" id="foto" name="foto[]" class="p-2 border border-gray-300 rounded-md w-full"
-                accept="image/*" required >
-              <span class="text-gray-500">Selecciona una foto del colaborador</span>
-
-              <label for="cedulaFoto" class="block">Seleccionar Cédula </label>
-              <input type="file" id="cedula" name="cedulaFoto[]" class="p-2 border border-gray-300 rounded-md w-full"
-                accept="image/*" >
-              <span class="text-gray-500">Selecciona cédula del colaborador</span>
-
-  `;
-
-      // Añadir el nuevo grupo de persona al contenedor
-      personasContainer.appendChild(newPersonGroup);
-
-      // Agregar evento al botón de eliminar (eliminar el grupo de persona)
-      const removeButton = newPersonGroup.querySelector('.remove-person');
-      removeButton.addEventListener('click', function () {
-        newPersonGroup.remove();
-      });
-    });
-
-    // Función para calcular los días entre el inicio y el final de la obra
-    function calcularDias() {
-      const inicioObra = document.getElementById('inicio-obra').value;
-      const finObra = document.getElementById('fin-obra').value;
-      const diasTrabajoInput = document.getElementById('dias-trabajo');
-
-      if (inicioObra && finObra) {
-        const fechaInicio = new Date(inicioObra);
-        const fechaFin = new Date(finObra);
-        const diferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 3600 * 24)) + 1; // Diferencia en días
-        diasTrabajoInput.value = diferencia >= 0 ? diferencia : 'Fecha de fin no válida';
-      }
-    }
-
-//     document.getElementById('formulario').addEventListener('submit', async function (event) {
-//   event.preventDefault(); // Previene el comportamiento por defecto del formulario (enviar)
-
-//   const submitButton = document.getElementById('submitButton');
-//   submitButton.disabled = true; // Deshabilitar el botón para prevenir un segundo clic
-//   submitButton.innerHTML = 'Enviando...';
-
-//   // Optimización de las imágenes antes de enviarlas
-//   const formData = new FormData(this);
-
-//   // Obtener las imágenes de los colaboradores
-//   const fotoFiles = formData.getAll('foto[]'); 
-
-//   try {
-//     // Solo optimizar imágenes si las hay
-//     let optimizedFotos = [];
-//     let optimizedCedulas = [];
-
-//     // Verificar y optimizar fotos si existen
-//     if (fotoFiles.length > 0) {
-//       optimizedFotos = await Promise.all(fotoFiles.map(file => optimizeImage(file)));
-//     }
+  <!-- Loader -->
+  <div id="loader" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-opacity-75"></div>
+    <p class="ml-4 text-white text-lg">Procesando archivos...</p>
+  </div>
  
-
-//     // Reemplazar las fotos optimizadas en el FormData
-//     optimizedFotos.forEach((optimizedFile, index) => {
-//       formData.set('foto[]', optimizedFile, `foto_${index + 1}.jpg`); // Renombrar para evitar conflictos
-//     });
- 
-
-//     // Log de los datos para verificar
-//     console.log("Datos del formulario a enviar:", formData);
-//     for (const [key, value] of formData.entries()) {
-//       console.log(`${key}: ${value}`);
-//     }
-
-//     // Enviar los datos al servidor
-//     const response = await fetch('/generar-solicitud', {
-//       method: 'POST',
-//       body: formData
-//     });
-
-//     // Verificar si la solicitud fue exitosa
-//     if (response.ok) {
-//       swal('Solicitud enviada correctamente');
-//     } else {
-//       swal('Error al enviar la solicitud');
-//     }
-//   } catch (error) {
-//     console.error('Error al enviar la solicitud:', error);
-//     swal('Error de conexión');
-//   } finally {
-//     // Reactivar el botón de submit en caso de que falle la solicitud
-//     submitButton.disabled = false;
-//     submitButton.innerHTML = 'Enviar';
-//     document.getElementById('formulario').reset();
-//   }
-// });
-
-
-// Función para optimizar la imagen
-async function optimizeImage(file, quality = 0.8) {
-  return new Promise((resolve) => {
-    // Depuración: Verificar el archivo que se está procesando
-    console.log('Procesando archivo:', file.name, 'Tipo:', file.type, 'Tamaño:', file.size, 'bytes');
-
-    // Validar que el archivo sea una imagen
-    if (!file.type.startsWith('image/')) {
-      console.log(`El archivo "${file.name}" no es una imagen. Se subirá sin optimizar.`);
-      resolve(file); // Devuelve el archivo original si no es una imagen
-      return;
-    }
-
-    // Validar formatos soportados
-    const supportedFormats = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!supportedFormats.includes(file.type)) {
-      console.log(`El formato de la imagen "${file.name}" no es soportado. Se subirá sin optimizar.`);
-      resolve(file); // Devuelve el archivo original si el formato no es soportado
-      return;
-    }
-
-    const img = new Image();
-    const reader = new FileReader();
-
-    // Manejar errores en la lectura del archivo
-    reader.onerror = () => {
-      console.error(`Error al leer el archivo "${file.name}". Se subirá sin optimizar.`);
-      resolve(file); // Devuelve el archivo original si hay un error al leer
-    };
-
-    // Cuando el archivo se lea correctamente
-    reader.onload = function (e) {
-      img.src = e.target.result;
-
-      // Cuando la imagen se cargue correctamente
-      img.onload = function () {
-        console.log(`Imagen "${file.name}" cargada correctamente. Dimensiones: ${img.width}x${img.height}`);
-
-        // Crear un canvas para redimensionar la imagen
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-
-        // Calcular las nuevas dimensiones manteniendo la relación de aspecto
-        let width = img.width;
-        let height = img.height;
-
-        // Configurar el canvas con las nuevas dimensiones
-        canvas.width = width;
-        canvas.height = height;
-
-        // Dibujar la imagen redimensionada en el canvas
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Convertir la imagen del canvas a un formato optimizado
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              console.error(`Error al convertir la imagen "${file.name}". Se subirá sin optimizar.`);
-              resolve(file); // Devuelve el archivo original si no se puede convertir
-              return;
-            }
-
-            // Crear un nuevo archivo optimizado
-            const optimizedFile = new File([blob], file.name, {
-              type: 'image/webp', // Usar WebP si es posible (mejor compresión)
-              lastModified: Date.now(),
-            });
-
-            console.log(`Imagen "${file.name}" optimizada correctamente. Nuevo tamaño: ${blob.size} bytes`);
-            resolve(optimizedFile);
-          },
-          'image/webp', // Usar WebP por defecto (soporte moderno)
-          quality // Calidad de compresión (0.8 = 80%)
-        );
-      };
-
-      // Manejar errores en la carga de la imagen
-      img.onerror = () => {
-        console.error(`Error al cargar la imagen "${file.name}". Se subirá sin optimizar.`);
-        resolve(file); // Devuelve el archivo original si no se puede cargar
-      };
-    };
-
-    // Leer el archivo como Data URL
-    reader.readAsDataURL(file);
-  });
-}
-
-
-document.getElementById('formulario').addEventListener('submit', async function (event) {
-  event.preventDefault(); // Previene el comportamiento por defecto del formulario (enviar)
-
-  // Mostrar el loader
-  const loader = document.getElementById('loader');
-  loader.classList.remove('hidden');
-
-  const submitButton = document.getElementById('submitButton');
-  submitButton.disabled = true; // Deshabilitar el botón para prevenir un segundo clic
-  submitButton.innerHTML = 'Enviando...';
-
-  // Optimización de los archivos antes de enviarlos
-  const formData = new FormData(this);
-
-  // Obtener todos los archivos del formulario
-  const fotoFiles = formData.getAll('foto[]');
-  const cedulaFiles = formData.getAll('cedulaFoto[]'); // Puede estar vacío si no se adjuntan fotos de cédula
-
-  try {
-    // Optimizar imágenes (fotos)
-    const optimizedFotos = await Promise.all(
-      fotoFiles.map(async (file) => {
-        return await optimizeImage(file); // Siempre devuelve un archivo (optimizado o original)
-      })
-    );
-
-    // Optimizar imágenes (cédulas), solo si hay archivos y tienen un tamaño mayor que 0
-    let optimizedCedulas = [];
-    if (cedulaFiles.length > 0) {
-      optimizedCedulas = await Promise.all(
-        cedulaFiles.map(async (file) => {
-          if (file.size > 0) {
-            return await optimizeImage(file); // Solo optimiza si el archivo tiene contenido
-          } else {
-            return null; // Devuelve null para archivos vacíos
-          }
-        })
-      );
-
-      // Filtrar los archivos nulos (archivos vacíos)
-      optimizedCedulas = optimizedCedulas.filter(file => file !== null);
-    }
-
-    // Limpiar los archivos originales del FormData
-    formData.delete('foto[]');
-    formData.delete('cedulaFoto[]');
-
-    // Agregar las imágenes optimizadas o originales al FormData (fotos)
-    optimizedFotos.forEach((file, index) => {
-      formData.append('foto[]', file, `foto_${index + 1}.${file.type === 'image/webp' ? 'webp' : file.name.split('.').pop()}`);
-    });
-
-    // Agregar las imágenes optimizadas o originales al FormData (cédulas), solo si hay archivos
-    if (optimizedCedulas.length > 0) {
-      optimizedCedulas.forEach((file, index) => {
-        formData.append('cedulaFoto[]', file, `cedula_${index + 1}.${file.type === 'image/webp' ? 'webp' : file.name.split('.').pop()}`);
-      });
-    }
-
-    // Enviar los datos al servidor
-    const response = await fetch('/generar-solicitud', {
-      method: 'POST',
-      body: formData,
-    });
-
-    // Verificar si la solicitud fue exitosa
-    if (response.ok) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Éxito',
-        text: 'Solicitud enviada correctamente.',
-      });
-    } else {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Error al enviar la solicitud.',
-      });
-    }
-  } catch (error) {
-    console.error('Error al enviar la solicitud:', error);
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'Error de conexión. Inténtalo de nuevo.',
-    });
-  } finally {
-    // Ocultar el loader
-    loader.classList.add('hidden');
-
-    // Reactivar el botón de submit en caso de que falle la solicitud
-    submitButton.disabled = false;
-    submitButton.innerHTML = 'Enviar';
-    document.getElementById('formulario').reset();
-  }
-});
-
-// Seleccionar todos los botones "Ver QR"
-    const verQRBtns = document.querySelectorAll('[id^="verQR-"]');
-
-    // Agregar el evento de clic a cada uno de los botones
-    verQRBtns.forEach(btn => {
-      btn.addEventListener('click', async function () {
-        const solicitudId = this.id.replace('verQR-', ''); // Extraer el solicitud_id
-
-        try {
-          const response = await fetch(`/generar-qr/${solicitudId}`);
-          const qrData = await response.json(); // Asegurarse de recibir JSON
-
-          if (response.ok) {
-            // Si la respuesta es correcta y se generó el QR
-            const qrContainer = document.getElementById('qr-container');
-
-            // Verificamos si el contenedor existe antes de intentar modificarlo
-            if (qrContainer) {
-              qrContainer.innerHTML = `<img src="${qrData.qrUrl}" alt="QR Code" class="mx-auto rounded-lg">`;
-              openModal(); // Mostrar el modal solo si el QR se generó correctamente
-            } else {
-              console.error('Contenedor QR no encontrado.');
-              Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error al cargar el contenedor para el código QR.'
-              });
-            }
-          } else {
-            // Manejar mensajes específicos según el contenido del mensaje
-            if (qrData.message.includes('vencida')) {
-              Swal.fire({
-                icon: 'warning',
-                title: 'Solicitud Vencida',
-                text: 'La solicitud está vencida, no se puede generar el QR.'
-              });
-            } else {
-              Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: qrData.message || 'No se pudo obtener el QR para esta solicitud.'
-              });
-            }
-          }
-        } catch (error) {
-          console.error('Error al obtener el QR:', error);
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Ocurrió un error al obtener el QR.'
-          });
-        }
-      });
-    });
-
-    // Función para abrir el modal
-    function openModal() {
-      document.getElementById('modalVerQR').classList.remove('hidden');
-    }
-
-    // Función para cerrar el modal
-    function closeModal() {
-      document.getElementById('modalVerQR').classList.add('hidden');
-    }
-  
-
- 
-        const inputLugar = document.getElementById("lugar");
-        const listaLugares = document.getElementById("lugares-list");
-        const opciones = listaLugares.querySelectorAll("li");
-        const errorLugar = document.getElementById("error-lugar");
-        const submitBtn = document.getElementById("submitButton");
-        
-        let lugarValido = false;
-
-        // Mostrar lista cuando el usuario escribe
-        inputLugar.addEventListener("input", function() {
-            listaLugares.classList.remove("hidden");
-            const filtro = inputLugar.value.toLowerCase();
-
-            opciones.forEach(opcion => {
-                const texto = opcion.textContent.toLowerCase();
-                if (texto.includes(filtro)) {
-                    opcion.classList.remove("hidden");
-                } else {
-                    opcion.classList.add("hidden");
-                }
-            });
-
-            lugarValido = false;
-        });
-
-        // Ocultar la lista si el usuario hace clic fuera
-        document.addEventListener("click", function(event) {
-            if (!listaLugares.contains(event.target) && event.target !== inputLugar) {
-                listaLugares.classList.add("hidden");
-            }
-        });
-
-        // Seleccionar un valor válido
-        opciones.forEach(opcion => {
-            opcion.addEventListener("click", function() {
-                inputLugar.value = this.dataset.value;
-                listaLugares.classList.add("hidden");
-                lugarValido = true;
-                errorLugar.classList.add("hidden");
-            });
-        });
-
-        // Validación antes de enviar
-        submitBtn.addEventListener("click", function(event) {
-            if (!lugarValido) {
-                event.preventDefault(); // Bloquea el envío si no es válido
-                errorLugar.classList.remove("hidden");
-            }
-        }); 
-
-  </script>
-  <!-- Enlace a los archivos JS de Bootstrap -->
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
 </body>
-
 </html>
+
+<% function getEstadoClass(estado) {
+  if (estado === 'aprobado por sst' || estado === 'pendiente ingreso') return 'text-yellow-500 font-semibold';
+  if (estado === 'en labor') return 'text-blue-500 font-semibold';
+  if (estado === 'labor detenida') return 'text-gray-500 font-semibold';
+  if (estado === 'pendiente ingreso - vencido') return 'text-red-500 font-semibold';
+  if (estado === 'en labor - vencida') return 'text-red-600 font-semibold';
+  if (estado === 'negada') return 'text-red-700 font-semibold';
+  return 'text-green-500 font-semibold';
+} %>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('formulario');
+  const addPersonBtn = document.getElementById('add-person');
+  const personasContainer = document.getElementById('personas-container');
+  const loader = document.getElementById('loader');
+  const submitButton = document.getElementById('submitButton');
+  const lugarInput = document.getElementById('lugar');
+  const lugaresList = document.getElementById('lugares-list');
+  const errorLugar = document.getElementById('error-lugar');
+  let lugarValido = false;
+
+  // Plantilla para nuevo colaborador
+  const collaboratorTemplate = `
+    <div class="person-group mb-4 relative">
+      <svg xmlns="http://www.w3.org/2000/svg" class="remove-person w-4 h-4 text-red-500 cursor-pointer" viewBox="0 0 511.991 511.991">
+        <path d="M286.161,255.867L505.745,36.283c8.185-8.474,7.951-21.98-0.523-30.165c-8.267-7.985-21.375-7.985-29.642,0L255.995,225.702L36.411,6.118c-8.475-8.185-21.98-7.95-30.165,0.524c-7.985,8.267-7.985,21.374,0,29.641L225.83,255.867L6.246,475.451c-8.328,8.331-8.328,21.835,0,30.165l0,0c8.331,8.328,21.835,8.328,30.165,0l219.584-219.584l219.584,219.584c8.331,8.328,21.835,8.328,30.165,0l0,0c8.328-8.331,8.328-21.835,0-30.165L286.161,255.867z" />
+      </svg>
+      <input type="number" placeholder="Cédula del Colaborador" name="cedula[]" class="p-2 border border-gray-300 rounded-md w-full" required>
+      <input type="text" placeholder="Nombre del colaborador" name="nombre[]" class="p-2 border border-gray-300 rounded-md w-full" required>
+      <label for="foto" class="block">Seleccionar Foto</label>
+      <input type="file" name="foto[]" class="p-2 border border-gray-300 rounded-md w-full" accept="image/*" required>
+      <span class="text-gray-500">Selecciona una foto del colaborador</span>
+      <label for="cedulaFoto" class="block">Seleccionar Cédula</label>
+      <input type="file" name="cedulaFoto[]" class="p-2 border border-gray-300 rounded-md w-full" accept="image/*">
+      <span class="text-gray-500">Selecciona cédula del colaborador</span>
+    </div>
+  `;
+
+  // Función para agregar colaborador
+  const addCollaborator = () => {
+    const newPerson = document.createElement('div');
+    newPerson.innerHTML = collaboratorTemplate;
+    personasContainer.appendChild(newPerson);
+    updateRemoveButtons();
+  };
+
+  // Actualizar estado de los botones de eliminación
+  const updateRemoveButtons = () => {
+    const persons = personasContainer.querySelectorAll('.person-group');
+    persons.forEach((person, index) => {
+      const removeBtn = person.querySelector('.remove-person');
+      if (persons.length === 1) {
+        removeBtn.classList.add('hidden'); // Ocultar el botón si solo hay un colaborador
+      } else {
+        removeBtn.classList.remove('hidden');
+        removeBtn.onclick = () => {
+          person.remove();
+          updateRemoveButtons();
+        };
+      }
+    });
+  };
+
+  // Agregar el primer colaborador por defecto
+  personasContainer.innerHTML = collaboratorTemplate;
+  updateRemoveButtons();
+
+  // Evento para agregar más colaboradores
+  addPersonBtn.addEventListener('click', addCollaborator);
+
+  // Calcular días
+  window.calcularDias = () => {
+    const inicio = document.getElementById('inicio-obra').value;
+    const fin = document.getElementById('fin-obra').value;
+    const diasTrabajo = document.getElementById('dias-trabajo');
+    if (inicio && fin) {
+      const fechaInicio = new Date(inicio);
+      const fechaFin = new Date(fin);
+      const diferencia = Math.ceil((fechaFin - fechaInicio) / (1000 * 3600 * 24)) + 1;
+      diasTrabajo.value = diferencia >= 0 ? diferencia : 'Fecha de fin no válida';
+    }
+  };
+
+  // Optimizar imágenes
+  const optimizeImage = async (file, quality = 0.8) => {
+    if (!file.type.startsWith('image/') || file.size === 0) return file;
+    const supportedFormats = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!supportedFormats.includes(file.type)) return file;
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, img.width, img.height);
+          canvas.toBlob(
+            (blob) => resolve(blob ? new File([blob], file.name, { type: 'image/webp', lastModified: Date.now() }) : file),
+            'image/webp',
+            quality
+          );
+        };
+        img.onerror = () => resolve(file);
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Enviar formulario
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!lugarValido) {
+      errorLugar.classList.remove('hidden');
+      return;
+    }
+
+    loader.classList.remove('hidden');
+    submitButton.disabled = true;
+    submitButton.innerHTML = 'Enviando...';
+
+    const formData = new FormData(form);
+    const fotoFiles = formData.getAll('foto[]');
+    const cedulaFiles = formData.getAll('cedulaFoto[]');
+
+    try {
+      const optimizedFotos = await Promise.all(fotoFiles.map(file => optimizeImage(file)));
+      const optimizedCedulas = await Promise.all(cedulaFiles.filter(file => file.size > 0).map(file => optimizeImage(file)));
+
+      formData.delete('foto[]');
+      formData.delete('cedulaFoto[]');
+      optimizedFotos.forEach((file, i) => formData.append('foto[]', file, `foto_${i + 1}.webp`));
+      optimizedCedulas.forEach((file, i) => formData.append('cedulaFoto[]', file, `cedula_${i + 1}.webp`));
+
+      const response = await fetch('/generar-solicitud', { method: 'POST', body: formData });
+      if (response.ok) {
+        Swal.fire({ icon: 'success', title: 'Éxito', text: 'Solicitud enviada correctamente.' });
+        form.reset();
+        personasContainer.innerHTML = collaboratorTemplate; // Resetear con un colaborador mínimo
+        updateRemoveButtons();
+      } else {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Error al enviar la solicitud.' });
+      }
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión. Inténtalo de nuevo.' });
+      console.error('Error:', error);
+    } finally {
+      loader.classList.add('hidden');
+      submitButton.disabled = false;
+      submitButton.innerHTML = 'Enviar';
+    }
+  });
+
+  // Manejo del campo Lugar
+  lugarInput.addEventListener('input', () => {
+    lugaresList.classList.remove('hidden');
+    const filtro = lugarInput.value.toLowerCase();
+    lugaresList.querySelectorAll('li').forEach(opcion => {
+      opcion.classList.toggle('hidden', !opcion.textContent.toLowerCase().includes(filtro));
+    });
+    lugarValido = false;
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!lugaresList.contains(e.target) && e.target !== lugarInput) lugaresList.classList.add('hidden');
+  });
+
+  lugaresList.querySelectorAll('li').forEach(opcion => {
+    opcion.addEventListener('click', () => {
+      lugarInput.value = opcion.dataset.value;
+      lugaresList.classList.add('hidden');
+      lugarValido = true;
+      errorLugar.classList.add('hidden');
+    });
+  });
+
+  // Manejo del modal QR
+  document.querySelectorAll('[id^="verQR-"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const solicitudId = btn.id.replace('verQR-', '');
+      try {
+        const response = await fetch(`/generar-qr/${solicitudId}`);
+        const qrData = await response.json();
+        if (response.ok) {
+          document.getElementById('qr-container').innerHTML = `<img src="${qrData.qrUrl}" alt="QR Code" class="mx-auto rounded-lg">`;
+          document.getElementById('modalVerQR').classList.remove('hidden');
+        } else {
+          Swal.fire({
+            icon: qrData.message.includes('vencida') ? 'warning' : 'error',
+            title: qrData.message.includes('vencida') ? 'Solicitud Vencida' : 'Error',
+            text: qrData.message.includes('vencida') ? 'La solicitud está vencida, no se puede generar el QR.' : qrData.message || 'No se pudo obtener el QR.'
+          });
+        }
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un error al obtener el QR.' });
+        console.error('Error:', error);
+      }
+    });
+  });
+
+  window.closeModal = () => document.getElementById('modalVerQR').classList.add('hidden');
+});
+</script>

@@ -71,7 +71,7 @@ controller.vistaSeguridad = async (req, res) => {
 
   
 controller.getSolicitudDetalles = async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.params; // ID del colaborador
     try {
         const token = req.cookies.token;
         if (!token) {
@@ -81,9 +81,26 @@ controller.getSolicitudDetalles = async (req, res) => {
         const decoded = jwt.verify(token, SECRET_KEY);
         const { username } = decoded;
 
+        // Paso 1: Obtener datos del colaborador por su ID
+        const [colaborador] = await connection.execute(
+            `
+            SELECT id, solicitud_id, cedula, nombre, foto, cedulaFoto 
+            FROM colaboradores 
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        if (!colaborador.length) {
+            return res.status(404).json({ message: 'Colaborador no encontrado' });
+        }
+
+        const solicitudId = colaborador[0].solicitud_id;
+
+        // Paso 2: Obtener datos de la solicitud asociada
         const [solicitud] = await connection.execute(
             `
-             SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
+            SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
                 DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra,
                 DATE_FORMAT(fin_obra, '%Y-%m-%d') AS fin_obra,
                 CASE
@@ -99,47 +116,50 @@ controller.getSolicitudDetalles = async (req, res) => {
             FROM solicitudes s
             LEFT JOIN users us ON us.id = s.interventor_id
             LEFT JOIN acciones a ON a.solicitud_id = s.id
-            WHERE s.id = ?  AND  estado IN ('aprobada', 'en labor', 'labor detenida' )
+            WHERE s.id = ? AND estado IN ('aprobada', 'en labor', 'labor detenida')
             AND a.accion = 'aprobada'
             `,
-            [id]
+            [solicitudId]
         );
 
         if (!solicitud.length) {
             return res.status(404).json({ message: 'Solicitud no encontrada' });
         }
 
-        // Modificación: Si el lugar es 'Supervisor', no mostrar advertencia y permitir todos los lugares
+        // Verificación del lugar
         const lugarSolicitud = solicitud[0].lugar;
-        const mensajeAdvertencia = lugarSolicitud === 'Supervisor' 
-            ? null 
-            : (lugarSolicitud !== username 
-                ? 'ADVERTENCIA: El lugar de la solicitud no coincide con tu ubicación. Notifica a la central la novedad.' 
+        const mensajeAdvertencia = lugarSolicitud === 'Supervisor'
+            ? null
+            : (lugarSolicitud !== username
+                ? 'ADVERTENCIA: El lugar de la solicitud no coincide con tu ubicación. Notifica a la central la novedad.'
                 : null);
 
-        const [colaboradores] = await connection.execute(
-            'SELECT id, nombre, cedula, foto FROM colaboradores WHERE solicitud_id = ?',
-            [id]
-        );
-
+        // Estructura de respuesta ajustada para el cliente
         res.json({
-            ...solicitud[0],
-            colaboradores,
+            id: solicitud[0].id,
+            empresa: solicitud[0].empresa,
+            lugar: solicitud[0].lugar,
+            labor: solicitud[0].labor,
+            interventor: solicitud[0].interventor,
+            estado_actual: solicitud[0].estado_actual,
+            inicio_obra: solicitud[0].inicio_obra,
+            fin_obra: solicitud[0].fin_obra,
             advertencia: mensajeAdvertencia,
+            colaboradores: [colaborador[0]], // Array con un solo colaborador
             username: username
         });
     } catch (error) {
-        console.error('Error al obtener los detalles de la solicitud:', error);
+        console.error('Error al obtener los detalles:', error);
         res.status(500).json({ message: 'Error interno del servidor' });
     }
 };
 
+
 controller.qrAccesosModal = async (req, res) => {
-    const idS = req.params.id;
- 
+    const { id } = req.params; // ID del colaborador
+
     try {
         const token = req.cookies.token;
-
         if (!token) {
             return res.redirect('/login');
         }
@@ -149,8 +169,56 @@ controller.qrAccesosModal = async (req, res) => {
             return res.redirect('/login');
         }
 
-        const { id, username } = decoded;
+        const { id: userId, username } = decoded;
 
+        // Paso 1: Obtener datos del colaborador por su ID
+        const [colaborador] = await connection.execute(
+            `
+            SELECT id, solicitud_id, cedula, nombre, foto, cedulaFoto 
+            FROM colaboradores 
+            WHERE id = ?
+            `,
+            [id]
+        );
+
+        if (!colaborador.length) {
+            console.log(`Colaborador con ID ${id} no encontrado`);
+            return res.redirect('/vista-seguridad');
+        }
+
+        const solicitudId = colaborador[0].solicitud_id;
+
+        // Paso 2: Obtener datos de la solicitud asociada
+        const [solicitudDetails] = await connection.execute(
+            `
+            SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
+                DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra,
+                DATE_FORMAT(fin_obra, '%Y-%m-%d') AS fin_obra,
+                CASE
+                    WHEN estado = 'aprobada' AND CURDATE() > DATE(fin_obra) THEN 'pendiente ingreso - vencido'
+                    WHEN estado = 'aprobada' THEN 'pendiente ingreso'
+                    WHEN estado = 'en labor' AND CURDATE() > DATE(fin_obra) THEN 'en labor - vencida'
+                    WHEN estado = 'en labor' THEN 'en labor'
+                    WHEN estado = 'labor detenida' THEN 'labor detenida'
+                    ELSE estado
+                END AS estado_actual,
+                lugar,
+                labor
+            FROM solicitudes s
+            LEFT JOIN users us ON us.id = s.interventor_id
+            LEFT JOIN acciones a ON a.solicitud_id = s.id
+            WHERE s.id = ? AND estado IN ('aprobada', 'en labor', 'labor detenida')
+            AND a.accion = 'aprobada'
+            `,
+            [solicitudId]
+        );
+
+        if (!solicitudDetails.length) {
+            console.log(`Solicitud con ID ${solicitudId} no encontrada`);
+            return res.redirect('/vista-seguridad');
+        }
+
+        // Consulta para 'solicitud' (mantenida por compatibilidad con la vista)
         const [solicitud] = await connection.execute(`
             SELECT 
                 s.id, 
@@ -180,52 +248,25 @@ controller.qrAccesosModal = async (req, res) => {
             AND seguridad.role_id = (SELECT id FROM roles WHERE role_name = 'seguridad')
             AND seguridad.id = ?
             ORDER BY s.id DESC
-        `, [id]);
+        `, [userId]);
 
-        // Consulta corregida
-        const [solicitudDetails] = await connection.execute(`
-            SELECT s.id, s.empresa, s.nit, s.estado, us.username AS interventor,
-                DATE_FORMAT(inicio_obra, '%Y-%m-%d') AS inicio_obra,
-                DATE_FORMAT(fin_obra, '%Y-%m-%d') AS fin_obra,
-                CASE
-                    WHEN estado = 'aprobada' AND CURDATE() > DATE(fin_obra) THEN 'pendiente ingreso - vencido'
-                    WHEN estado = 'aprobada' THEN 'pendiente ingreso'
-                    WHEN estado = 'en labor' AND CURDATE() > DATE(fin_obra) THEN 'en labor - vencida'
-                    WHEN estado = 'en labor' THEN 'en labor'
-                    WHEN estado = 'labor detenida' THEN 'labor detenida'
-                    ELSE estado
-                END AS estado_actual,
-                lugar,
-                labor
-            FROM solicitudes s
-            LEFT JOIN users us ON us.id = s.interventor_id
-            LEFT JOIN acciones a ON a.solicitud_id = s.id
-            WHERE s.id = ? AND estado IN ('aprobada', 'en labor', 'labor detenida')
-            AND a.accion = 'aprobada'
-        `, [idS]);
-
-        if (!solicitudDetails.length) {
-            return res.redirect('/vista-seguridad');
-        }
-
+        // Verificación del lugar
         const lugarSolicitud = solicitudDetails[0].lugar;
-        const mensajeAdvertencia = lugarSolicitud === 'Supervisor' 
-            ? null 
-            : (lugarSolicitud !== username 
-                ? 'ADVERTENCIA: El lugar de la solicitud no coincide con tu ubicación. Notifica a la central la novedad.' 
+        const mensajeAdvertencia = lugarSolicitud === 'Supervisor'
+            ? null
+            : (lugarSolicitud !== username
+                ? 'ADVERTENCIA: El lugar de la solicitud no coincide con tu ubicación. Notifica a la central la novedad.'
                 : null);
 
-        const [colaboradores] = await connection.execute(
-            'SELECT id, nombre, cedula, foto FROM colaboradores WHERE solicitud_id = ?',
-            [idS]
-        );
+        // Solo incluir el colaborador específico
+        const colaboradores = [colaborador[0]];
 
+        // Definir estados no permitidos para ingreso, entrada y salida
         const estadosNoPermitidosIngreso = [
             'en labor',
             'en labor - vencida',
             'labor detenida',
             'pendiente ingreso - vencido',
-            'pendiente ingreso - vencida',
             'en labor - vencida'
         ];
 
@@ -245,6 +286,7 @@ controller.qrAccesosModal = async (req, res) => {
             }
         };
 
+        // Respuesta exacta como solicitaste
         res.render('seguridad', {
             solicitud,
             modalData: {
@@ -262,7 +304,6 @@ controller.qrAccesosModal = async (req, res) => {
         res.redirect('/vista-seguridad');
     }
 };
-
 
   controller.registrarIngreso = async (req, res) => {
     const { id } = req.params;

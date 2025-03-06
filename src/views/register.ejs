@@ -36,8 +36,13 @@
             <input type="text" name="nit" placeholder="Número de NIT" required>
           </div>
           <div class="form-group">
+            <label for="email">Correo Electrónico</label>
+            <input type="email" name="email" id="email" placeholder="Correo electrónico">
+            <small class="form-text text-muted">Obligatorio para contratistas</small>
+          </div>
+          <div class="form-group">
             <label for="role">Rol</label>
-            <select name="role" required>
+            <select name="role" id="role" required>
                 <% if (roles && roles.length > 0) { %>
                     <% roles.forEach(function(role) { %>
                         <option value="<%= role.id %>"><%= role.role_name %></option>
@@ -62,20 +67,59 @@
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const form = document.querySelector('form');
+        const emailInput = document.getElementById('email');
+        const roleSelect = document.getElementById('role');
         
+        // Función para validar el correo electrónico
+        function validateEmail(email) {
+          const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+          return re.test(String(email).toLowerCase());
+        }
+
+        // Función para verificar si el rol seleccionado es contratista
+        function checkRole() {
+          const selectedOption = roleSelect.options[roleSelect.selectedIndex];
+          const isContratista = selectedOption.text.toLowerCase() === 'contratista';
+          
+          if (isContratista) {
+            emailInput.required = true;
+            emailInput.parentElement.classList.add('required');
+          } else {
+            emailInput.required = false;
+            emailInput.parentElement.classList.remove('required');
+          }
+        }
+
+        // Escuchar cambios en el select de roles
+        roleSelect.addEventListener('change', checkRole);
+        
+        // Validar el formulario antes de enviar
         form.addEventListener('submit', function(event) {
           const password = document.querySelector('input[name="password"]').value;
           const confirmPassword = document.querySelector('input[name="confirm-password"]').value;
+          const email = emailInput.value;
+          const selectedOption = roleSelect.options[roleSelect.selectedIndex];
+          const isContratista = selectedOption.text.toLowerCase() === 'contratista';
 
           if (password !== confirmPassword) {
-            event.preventDefault();  // Detener el envío del formulario
+            event.preventDefault();
             Swal.fire({
               icon: 'error',
               title: 'Las contraseñas no coinciden',
               text: 'Por favor, asegúrate de que ambas contraseñas sean iguales.',
             });
+          } else if (isContratista && !validateEmail(email)) {
+            event.preventDefault();
+            Swal.fire({
+              icon: 'error',
+              title: 'Correo electrónico inválido',
+              text: 'Por favor, ingresa un correo electrónico válido.',
+            });
           }
         });
+
+        // Verificar el rol al cargar la página
+        checkRole();
       });
     </script>
   </body>

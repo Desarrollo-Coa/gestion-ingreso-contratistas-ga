@@ -11,6 +11,7 @@ const { format } = require('date-fns');  // Importamos la función 'format' de d
 const QRCode = require('qrcode');
 const handlebars = require('handlebars'); 
 const { concurrency } = require('sharp');
+const emailService = require('../services/email.service');
 
  
 const AWS = require('aws-sdk');  
@@ -228,6 +229,7 @@ async function getImageBase64(imagePath) {
 }
 
 // Función para obtener los detalles de la solicitud
+
 controller.obtenerDetallesSolicitud = async (req, res) => {
   const { id } = req.params;
 
@@ -237,14 +239,15 @@ controller.obtenerDetallesSolicitud = async (req, res) => {
       return res.status(404).send('Solicitud no encontrada');
     }
 
-    const [colaboradores] = await connection.execute('SELECT cedula, nombre, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?', [id]);
+    const [colaboradores] = await connection.execute(
+      'SELECT id, cedula, nombre, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?',
+      [id]
+    );
     const [contratista] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].usuario_id]);
     const [interventor] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].interventor_id]);
 
-    for (const colaborador of colaboradores) {
-      if (colaborador.foto) colaborador.fotoBase64 = await getImageBase64(colaborador.foto);
-      if (colaborador.cedulaFoto) colaborador.cedulaFotoBase64 = await getImageBase64(colaborador.cedulaFoto);
-    }
+    // No Base64 conversion; use URLs directly
+    // (Removed the for loop with getImageBase64)
 
     // Formatear fechas
     solicitud.forEach((solici) => {
@@ -271,7 +274,6 @@ controller.obtenerDetallesSolicitud = async (req, res) => {
   }
 };
 
-
 controller.aprobarSolicitud = async (req, res) => {
   const { solicitudId } = req.body;
 
@@ -291,25 +293,39 @@ controller.aprobarSolicitud = async (req, res) => {
       return res.status(400).send('La solicitud ya está aprobada.');
     }
 
+    // Obtener información del contratista y la solicitud
+    const [solicitudInfo] = await connection.execute(`
+      SELECT s.*, u.email, u.empresa 
+      FROM solicitudes s 
+      JOIN users u ON s.usuario_id = u.id 
+      WHERE s.id = ?
+    `, [solicitudId]);
+
+    if (solicitudInfo.length === 0) {
+      return res.status(404).send('Solicitud no encontrada');
+    }
+
     // Si la acción no está aprobada, actualizamos el estado a "aprobada"
     await connection.execute('UPDATE acciones SET accion = "aprobada" WHERE solicitud_id = ?', [solicitudId]);
 
     console.log('[DEBUG] Estado de la acción actualizado a "aprobada".');
 
-    // Luego, verificamos la fecha de la solicitud, y si está vigente
-    const [solicitud] = await connection.execute('SELECT fin_obra FROM solicitudes WHERE id = ?', [solicitudId]);
-
-    const currentDate = new Date();
-    const fechaFin = new Date(solicitud[0].fin_obra);
-
-    // Si la fecha de fin es anterior a la fecha actual, marcar la solicitud como vencida
-    if (fechaFin < currentDate) {
-      console.log('[DEBUG] La solicitud está vencida.');
-      // Nota: La solicitud no se marca como "vencida" aquí si ya está aprobada
-      // Esto se podría manejar de otra manera, si se necesita un campo específico para vencimiento
+    // Enviar correo de aprobación si el contratista tiene email
+    if (solicitudInfo[0].email) {
+      try {
+        await emailService.sendApprovalEmail(solicitudInfo[0].email, {
+          empresa: solicitudInfo[0].empresa,
+          solicitudId: solicitudId,
+          fecha: new Date().toLocaleDateString()
+        });
+        console.log('[DEBUG] Correo de aprobación enviado correctamente');
+      } catch (emailError) {
+        console.error('[ERROR] Error al enviar correo de aprobación:', emailError);
+        // No interrumpimos el flujo si falla el envío del correo
+      }
     }
 
-    res.redirect('/vista-interventor'); // Redirigir de nuevo a la vista del interventor
+    res.redirect('/vista-interventor');
   } catch (err) {
     console.error('[ERROR] Error al aprobar solicitud:', err);
     res.status(500).send('Error al aprobar la solicitud');
@@ -372,28 +388,50 @@ controller.generarQR = async (req, res) => {
 
   console.log("Validando id de solicitud a detener", solicitudId);
 
-  const query = ` 
-        UPDATE solicitudes s
-        JOIN acciones a ON s.id = a.solicitud_id
-        SET s.estado = 'labor detenida'
-        WHERE 
-            s.estado = 'en labor' 
-            OR (s.estado = 'aprobada' AND a.accion = 'aprobada')
-            AND s.id = ?;`;
-
   try {
-    // Usamos await para esperar que la consulta a la base de datos se complete
+    // Obtener información del contratista y la solicitud
+    const [solicitudInfo] = await connection.execute(`
+      SELECT s.*, u.email, u.empresa 
+      FROM solicitudes s 
+      JOIN users u ON s.usuario_id = u.id 
+      WHERE s.id = ?
+    `, [solicitudId]);
+
+    if (solicitudInfo.length === 0) {
+      return res.status(404).json({ message: 'Solicitud no encontrada' });
+    }
+
+    const query = ` 
+      UPDATE solicitudes s
+      JOIN acciones a ON s.id = a.solicitud_id
+      SET s.estado = 'labor detenida'
+      WHERE 
+        s.estado = 'en labor' 
+        OR (s.estado = 'aprobada' AND a.accion = 'aprobada')
+        AND s.id = ?;`;
+
     const [result] = await connection.execute(query, [solicitudId]);
 
     if (result.affectedRows > 0) {
-      // Se actualizó correctamente el estado
+      // Enviar correo de detención de labor si el contratista tiene email
+      if (solicitudInfo[0].email) {
+        try {
+          await emailService.sendLaborStopEmail(solicitudInfo[0].email, {
+            empresa: solicitudInfo[0].empresa,
+            solicitudId: solicitudId,
+            fecha: new Date().toLocaleDateString()
+          });
+          console.log('[DEBUG] Correo de detención de labor enviado correctamente');
+        } catch (emailError) {
+          console.error('[ERROR] Error al enviar correo de detención de labor:', emailError);
+          // No interrumpimos el flujo si falla el envío del correo
+        }
+      }
       res.status(200).json({ message: 'Labor detenida correctamente' });
     } else {
-      // Si no se encontró la solicitud o ya estaba detenida
       res.status(400).json({ message: 'La solicitud no está en estado de "en labor" o ya fue detenida.' });
     }
   } catch (err) {
-    // En caso de error en la consulta
     console.error('[CONTROLADOR] Error al detener la labor:', err);
     res.status(500).json({ message: 'Error al intentar detener la labor' });
   }
@@ -407,23 +445,45 @@ controller.reanudarLabor = async (req, res) => {
 
   console.log("Validando id de solicitud para reanudar", solicitudId);
 
-  const query = `UPDATE solicitudes 
-                 SET estado = 'aprobada' 
-                 WHERE id = ? AND estado = 'labor detenida'`;
-
   try {
-    // Usamos await para esperar que la consulta a la base de datos se complete
+    // Obtener información del contratista y la solicitud
+    const [solicitudInfo] = await connection.execute(`
+      SELECT s.*, u.email, u.empresa 
+      FROM solicitudes s 
+      JOIN users u ON s.usuario_id = u.id 
+      WHERE s.id = ?
+    `, [solicitudId]);
+
+    if (solicitudInfo.length === 0) {
+      return res.status(404).json({ message: 'Solicitud no encontrada' });
+    }
+
+    const query = `UPDATE solicitudes 
+                   SET estado = 'aprobada' 
+                   WHERE id = ? AND estado = 'labor detenida'`;
+
     const [result] = await connection.execute(query, [solicitudId]);
 
     if (result.affectedRows > 0) {
-      // Se actualizó correctamente el estado
+      // Enviar correo de reanudación de labor si el contratista tiene email
+      if (solicitudInfo[0].email) {
+        try {
+          await emailService.sendLaborResumeEmail(solicitudInfo[0].email, {
+            empresa: solicitudInfo[0].empresa,
+            solicitudId: solicitudId,
+            fecha: new Date().toLocaleDateString()
+          });
+          console.log('[DEBUG] Correo de reanudación de labor enviado correctamente');
+        } catch (emailError) {
+          console.error('[ERROR] Error al enviar correo de reanudación de labor:', emailError);
+          // No interrumpimos el flujo si falla el envío del correo
+        }
+      }
       res.status(200).json({ message: 'Labor reanudada correctamente' });
     } else {
-      // Si no se encontró la solicitud o ya estaba en estado "en labor"
       res.status(400).json({ message: 'La solicitud no está en estado de "labor detenida" o ya está en labor.' });
     }
   } catch (err) {
-    // En caso de error en la consulta
     console.error('[CONTROLADOR] Error al reanudar la labor:', err);
     res.status(500).json({ message: 'Error al intentar reanudar la labor' });
   }
@@ -484,7 +544,7 @@ controller.filtrarSolicitudes = async (req, res) => {
       return res.status(403).json({ message: 'Acceso denegado' });
     }
 
-    const { id: filtroId, cedula, interventor, estado, fechaInicio, fechaFin, nit, empresa, lugar, vigencia } = req.body;
+    const { id: filtroId, cedula, interventor, estado, fechaInicio, fechaFin, nit, empresa, lugar, vigencia, idColaborador } = req.body;
 
     let query = `
       SELECT DISTINCT
@@ -527,6 +587,10 @@ controller.filtrarSolicitudes = async (req, res) => {
     if (filtroId) {
       query += ' AND a.solicitud_id = ?';
       params.push(filtroId);
+    }
+    if (idColaborador) {
+      query += ' AND c.id = ?';
+      params.push(idColaborador);
     }
     if (cedula) {
       query += ' AND c.cedula LIKE ?';

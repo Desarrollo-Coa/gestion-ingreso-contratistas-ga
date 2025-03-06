@@ -4,43 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seguridad</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"> 
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script> <!-- CDN de Tailwind CSS -->
-
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-
     <style>
-        video{
-            display: flex;
-            justify-content: center;
-        }
-
-        .ocultar{
-            
-            display: none;
-        }
-        #advertencia{
-            color: #ff0000;
-        }
-        .colaborador-checkbox{
-            height: 20px;
-            width: 20px;
-        }
+        video { display: flex; justify-content: center; }
+        .ocultar { display: none; }
+        #advertencia { color: #ff0000; }
+        .colaborador-checkbox { height: 20px; width: 20px; }
     </style>
-
 </head>
-<body>  
-<!-- Barra de navegación -->
-<nav class="flex justify-between items-center bg-gray-800 text-white p-4" id="nav">
-    <a class="text-lg font-semibold" href="#">Vista Seguridad GA - <%= username  %> </a>
-    <a class="text-lg" href="/logout">Cerrar sesión</a>
-  </nav>
-  
+<body>
+    <!-- Barra de navegación -->
+    <nav class="flex justify-between items-center bg-gray-800 text-white p-4">
+        <a class="text-lg font-semibold" href="#">Vista Seguridad GA - <%= username %></a>
+        <a class="text-lg" href="/logout">Cerrar sesión</a>
+    </nav>
+
     <div class="container mt-5">
-    
         <!-- Buscador y Botón Escanear QR -->
         <div class="mb-4 d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
@@ -49,8 +31,8 @@
             </div>
             <button class="btn btn-secondary ocultar" onclick="escanearQR()">Escanear QR</button>
         </div>
-    
-        <!-- Tabla Responsiva -->
+
+        <!-- 
         <div class="table-responsive">
             <table class="table table-striped table-bordered table-hover shadow-sm rounded">
                 <thead class="table-dark">
@@ -70,706 +52,397 @@
                             <td><%= sol.empresa %></td>
                             <td><%= sol.nit %></td>
                             <td>
-                                <span 
-                                    class="badge 
-                                    <%= sol.estado_actual.includes('pendiente ingreso') ? 'bg-warning' 
-                                    : sol.estado_actual.includes('vencida') ? 'bg-danger' 
-                                    : sol.estado_actual === 'en labor' ? 'bg-info'
-                                    : sol.estado_actual === 'labor detenida' ? 'bg-secondary' 
-                                    : 'bg-success' %>">
+                                <span class="badge <%= getEstadoClass(sol.estado_actual) %>">
                                     <%= sol.estado_actual %>
                                 </span>
                             </td>
                             <td><%= sol.interventor %></td>
-
                             <td>
                                 <button class="btn btn-info btn-sm" onclick="verDetalles(<%= sol.id %>)">
                                     <i class="bi bi-eye"></i> Ver Detalles
                                 </button>
                             </td>
- 
                         </tr>
-                    <% }); %> 
+                    <% }); %>
                 </tbody>
             </table>
-            
         </div>
+       Tabla única --> 
     </div>
 
- <!-- Modal de Confirmación para Entrada/Salida -->
-<div id="confirmacionModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden" style="z-index: 10000">
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
-        <div class="px-6 py-4 border-b flex justify-between items-center">
-            <h5 class="text-lg font-semibold">Confirmar Registro</h5>
-            <button id="cerrarModal" class="text-gray-500 hover:text-gray-700">&times;</button>
-        </div>
-        <div class="p-6">
-            <p id="confirmacionTexto" class="text-gray-700"></p>
-            <ul id="listaColaboradoresConfirmacion" class="mt-2 text-gray-600 list-disc pl-5"></ul>
 
-            <!-- Fecha de Entrada/Salida -->
-            <div class="mt-4">
-                <label for="fechaRegistro" class="form-label">Fecha de Registro:</label>
-                <input type="datetime-local" id="fechaRegistro" class="form-control w-full" required>
+
+    <!-- Modal de Confirmación para Entrada/Salida -->
+    <div id="confirmacionModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden" style="z-index: 10000">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+            <div class="px-6 py-4 border-b flex justify-between items-center">
+                <h5 class="text-lg font-semibold">Confirmar Registro</h5>
+                <button id="cerrarModal" class="text-gray-500 hover:text-gray-700">×</button>
+            </div>
+            <div class="p-6">
+                <p id="confirmacionTexto" class="text-gray-700"></p>
+                <ul id="listaColaboradoresConfirmacion" class="mt-2 text-gray-600 list-disc pl-5"></ul>
+                <div class="mt-4">
+                    <label for="fechaRegistro" class="form-label">Fecha de Registro:</label>
+                    <input type="datetime-local" id="fechaRegistro" class="form-control w-full" required>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t flex justify-end space-x-3">
+                <button id="cancelarBtn" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded">Cancelar</button>
+                <button id="confirmarRegistroBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">Confirmar</button>
             </div>
         </div>
-        <div class="px-6 py-4 border-t flex justify-end space-x-3">
-            <button id="cancelarBtn" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded">Cancelar</button>
-            <button id="confirmarRegistroBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">Confirmar</button>
-        </div>
     </div>
-</div>
 
     <!-- Modal para Ver Detalles -->
-<div class="modal fade" id="detallesModal" tabindex="-1" aria-labelledby="detallesModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="detallesModalLabel">Detalles de la Solicitud</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Información General -->
-                <div class="row">
-                    <div class="col-12 col-md-6">
-                        <p><strong>Id:</strong> <span id="detalleId"></span></p>
-                        <p><strong>Empresa:</strong> <span id="detalleEmpresa"></span></p>
-                        <p><strong>Lugar:</strong> <span id="detalleLugar"></span></p>
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <p><strong>Labor:</strong> <span id="detalleLabor"></span></p>
-                        <p><strong>Inicio de Obra:</strong> <span id="detalleInicio"></span></p>
-                        <p><strong>Fin de Obra:</strong> <span id="detalleFin"></span></p>
-                        <p><strong>Estado:</strong> <span id="detalleEstado"></span></p>
-                        <p><strong>Interventor:</strong> <span id="detalleInterventor"></span></p>
-                        <p><span id="advertencia"></span></p>
-
-
-                        
-                    </div>
+    <div class="modal fade" id="detallesModal" tabindex="-1" aria-labelledby="detallesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detallesModalLabel">Detalles de la Solicitud</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-
-                <!-- Colaboradores -->
-                <h5 class="mt-4">Colaboradores</h5>
-                <div id="detalleColaboradores" class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3">
-                    <!-- Los colaboradores se generarán aquí dinámicamente -->
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-12 col-md-6">
+                            <p><strong>Id de la solicitud:</strong> <span id="detalleId"></span></p>
+                            <p><strong>Empresa:</strong> <span id="detalleEmpresa"></span></p>
+                            <p><strong>Lugar:</strong> <span id="detalleLugar"></span></p>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <p><strong>Labor:</strong> <span id="detalleLabor"></span></p>
+                            <p><strong>Inicio de Obra:</strong> <span id="detalleInicio"></span></p>
+                            <p><strong>Fin de Obra:</strong> <span id="detalleFin"></span></p>
+                            <p><strong>Estado:</strong> <span id="detalleEstado"></span></p>
+                            <p><strong>Interventor:</strong> <span id="detalleInterventor"></span></p>
+                            <p><span id="advertencia"></span></p>
+                        </div>
+                    </div>
+                    <h5 class="mt-4">Colaboradores</h5>
+                    <div id="detalleColaboradores" class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3"></div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-primary" id="registrarIngresoBtn">Registrar Ingreso</button>
-                <button type="button" class="btn btn-success" id="registrarEntradaBtn">Registrar Entrada</button>
-                <button type="button" class="btn btn-danger" id="registrarSalidaBtn">Registrar Salida</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" id="registrarIngresoBtn">Registrar Ingreso</button>
+                    <button type="button" class="btn btn-success" id="registrarEntradaBtn">Registrar Entrada</button>
+                    <button type="button" class="btn btn-danger" id="registrarSalidaBtn">Registrar Salida</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
- 
     <script>
- 
+        let modalData = null;
+        const estadosVencidos = ['en labor - vencida', 'labor detenida', 'pendiente ingreso - vencido', 'en labor - vencida'];
 
-// Definir modalData globalmente
-let modalData = null;
+        // Función para obtener la clase del estado
+        function getEstadoClass(estado) {
+            if (estado.includes('pendiente ingreso')) return 'bg-warning';
+            if (estado.includes('vencida')) return 'bg-danger';
+            if (estado === 'en labor') return 'bg-info';
+            if (estado === 'labor detenida') return 'bg-secondary';
+            return 'bg-success';
+        }
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Asignar modalData desde el servidor
-    modalData = <%- JSON.stringify(typeof modalData !== 'undefined' ? modalData : null) %>;
-
-    if (modalData) {
-        // Prellenar los detalles de la solicitud en el modal
-        document.getElementById('detalleId').textContent = modalData.id || 'N/A';
-        document.getElementById('detalleEmpresa').textContent = modalData.empresa || 'N/A';
-        document.getElementById('detalleLugar').textContent = modalData.lugar || 'N/A';
-        document.getElementById('detalleLabor').textContent = modalData.labor || 'N/A';
-        document.getElementById('detalleInterventor').textContent = modalData.interventor || 'N/A';
-        document.getElementById('advertencia').textContent = modalData.advertencia || '';
-
-        // Formatear fechas
-        const formatFecha = (fecha) => {
+        // Función para formatear fechas
+        function formatFecha(fecha) {
             if (!fecha) return 'N/A';
             const date = new Date(fecha);
             return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-        };
-        document.getElementById('detalleInicio').textContent = formatFecha(modalData.inicio_obra);
-        document.getElementById('detalleFin').textContent = formatFecha(modalData.fin_obra);
-
-        // Actualizar estado dinámico
-        const estadoElement = document.getElementById('detalleEstado');
-        const estadoActual = modalData.estado_actual || 'Desconocido';
-        estadoElement.textContent = estadoActual;
-        estadoElement.className = 'badge'; // Reiniciar clases
-
-        // Aplicar clases dinámicas basado en estado
-        if (estadoActual.includes('pendiente ingreso')) {
-            estadoElement.classList.add('bg-warning');
-        } else if (estadoActual.includes('vencida')) {
-            estadoElement.classList.add('bg-danger');
-        } else if (estadoActual === 'en labor') {
-            estadoElement.classList.add('bg-info');
-        } else if (estadoActual === 'labor detenida') {
-            estadoElement.classList.add('bg-secondary');
-        } else {
-            estadoElement.classList.add('bg-success');
         }
 
-        // Mostrar colaboradores
-        const colaboradoresContainer = document.getElementById('detalleColaboradores');
-        colaboradoresContainer.innerHTML = '';
+        // Función para llenar el modal
+        function llenarModal(data) {
+            modalData = data;
+            document.getElementById('detalleId').textContent = data.id || 'N/A';
+            document.getElementById('detalleEmpresa').textContent = data.empresa || 'N/A';
+            document.getElementById('detalleLugar').textContent = data.lugar || 'N/A';
+            document.getElementById('detalleLabor').textContent = data.labor || 'N/A';
+            document.getElementById('detalleInterventor').textContent = data.interventor || 'N/A';
+            document.getElementById('detalleInicio').textContent = formatFecha(data.inicio_obra);
+            document.getElementById('detalleFin').textContent = formatFecha(data.fin_obra);
+            document.getElementById('advertencia').textContent = data.advertencia || '';
 
-        if (modalData.colaboradores && modalData.colaboradores.length > 0) {
-            modalData.colaboradores.forEach((col) => {
-                const colDiv = document.createElement('div');
-                colDiv.classList.add('col-md-4', 'mb-3');
-                colDiv.innerHTML = `
-                    <div class="card">
-                        <img src="${col.foto}" class="card-img-top" alt="Foto de ${col.nombre}">
-                        <div class="card-body">
-                            <h6 class="card-title">${col.nombre}</h6>
-                            <p class="card-text">Cédula: ${col.cedula}</p>
-                            <input type="checkbox" class="colaborador-checkbox" value="${col.id}">
+            const estadoElement = document.getElementById('detalleEstado');
+            estadoElement.textContent = data.estado_actual || 'Desconocido';
+            estadoElement.className = 'badge ' + getEstadoClass(data.estado_actual);
+
+            const colaboradoresContainer = document.getElementById('detalleColaboradores');
+            colaboradoresContainer.innerHTML = '';
+            if (data.colaboradores && data.colaboradores.length > 0) {
+                data.colaboradores.forEach((col) => {
+                    const colDiv = document.createElement('div');
+                    colDiv.classList.add('col-md-4', 'mb-3');
+                    colDiv.innerHTML = `
+                        <div class="card">
+                            <img src="${col.foto}" class="card-img-top" alt="Foto de ${col.nombre}">
+                            <div class="card-body">
+                                <h6 class="card-title">${col.nombre}</h6>
+                                <p class="card-text">Cédula: ${col.cedula}</p>
+                                <p class="card-text">ID Colaborador: ${col.id}</p>
+                                <input type="checkbox" class="colaborador-checkbox" value="${col.id}">
+                            </div>
                         </div>
-                    </div>
-                `;
-                colaboradoresContainer.appendChild(colDiv);
-            });
-        } else {
-            colaboradoresContainer.innerHTML = '<p>No hay colaboradores disponibles.</p>';
+                    `;
+                    colaboradoresContainer.appendChild(colDiv);
+                });
+            } else {
+                colaboradoresContainer.innerHTML = '<p>No hay colaboradores disponibles.</p>';
+            }
+
+            configurarBotones(data);
+            const modal = new bootstrap.Modal(document.getElementById('detallesModal'));
+            modal.show();
         }
 
-        // Configurar botones de ingreso, salida y entrada
-        const registrarIngresoBtn = document.getElementById('registrarIngresoBtn');
-        const registrarEntradaBtn = document.getElementById('registrarEntradaBtn');
-        const registrarSalidaBtn = document.getElementById('registrarSalidaBtn');
+        // Función para configurar botones
+        function configurarBotones(data) {
+            const registrarIngresoBtn = document.getElementById('registrarIngresoBtn');
+            const registrarEntradaBtn = document.getElementById('registrarEntradaBtn');
+            const registrarSalidaBtn = document.getElementById('registrarSalidaBtn');
 
-        // Definir los estados vencidos
-        const estadosVencidos = [
-            'en labor - vencida',
-            'labor detenida',
-            'pendiente ingreso - vencido',
-            'en labor - vencida'
-        ];
-
-        // Deshabilitar "Registrar Ingreso" cuando el estado esté en los estadosVencidos o sea 'en labor'
-        if (estadosVencidos.includes(modalData.estado_actual) || modalData.advertencia !== null || modalData.estado_actual === 'en labor') {
-            console.log("Estado no permitido para registrar ingreso o hay advertencia: ", modalData.estado_actual, modalData.advertencia);
-            registrarIngresoBtn.disabled = true;
-            registrarIngresoBtn.classList.add('btn-secondary');
-            registrarIngresoBtn.textContent = 'No disponible';
-        } else {
-            console.log("Estado permitido para registrar ingreso: ", modalData.estado_actual);
-            registrarIngresoBtn.disabled = false;
-            registrarIngresoBtn.classList.remove('btn-secondary');
-            registrarIngresoBtn.classList.add('btn-primary');
-            registrarIngresoBtn.textContent = 'Registrar Ingreso';
-
-            registrarIngresoBtn.onclick = async () => {
-                try {
-                    const registerResponse = await fetch(`/api/solicitudes/${modalData.id}/registrar-ingreso`, {
-                        method: 'PUT',
-                    });
-
-                    if (registerResponse.ok) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Ingreso registrado',
-                            text: 'El ingreso se ha registrado correctamente.',
-                        });
-                        registrarIngresoBtn.disabled = true;
-                        registrarIngresoBtn.textContent = 'Registrado';
-                    } else {
-                        const errorData = await registerResponse.json();
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: errorData.message || 'No se pudo registrar el ingreso.',
-                        });
+            if (estadosVencidos.includes(data.estado_actual) || data.advertencia || data.estado_actual === 'en labor') {
+                registrarIngresoBtn.disabled = true;
+                registrarIngresoBtn.classList.add('btn-secondary');
+                registrarIngresoBtn.classList.remove('btn-primary');
+                registrarIngresoBtn.textContent = 'No disponible';
+            } else {
+                registrarIngresoBtn.disabled = false;
+                registrarIngresoBtn.classList.remove('btn-secondary');
+                registrarIngresoBtn.classList.add('btn-primary');
+                registrarIngresoBtn.textContent = 'Registrar Ingreso';
+                registrarIngresoBtn.onclick = async () => {
+                    try {
+                        const response = await fetch(`/api/solicitudes/${data.id}/registrar-ingreso`, { method: 'PUT' });
+                        if (response.ok) {
+                            Swal.fire({ icon: 'success', title: 'Ingreso registrado', text: 'El ingreso se ha registrado correctamente.' });
+                            registrarIngresoBtn.disabled = true;
+                            registrarIngresoBtn.textContent = 'Registrado';
+                        } else {
+                            const errorData = await response.json();
+                            Swal.fire({ icon: 'error', title: 'Error', text: errorData.message || 'No se pudo registrar el ingreso.' });
+                        }
+                    } catch (err) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un error al intentar registrar el ingreso.' });
                     }
-                } catch (err) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Ocurrió un error al intentar registrar el ingreso.',
-                    });
+                };
+            }
+
+            if (data.advertencia || estadosVencidos.includes(data.estado_actual)) {
+                registrarSalidaBtn.disabled = true;
+                registrarSalidaBtn.textContent = 'No disponible';
+                registrarSalidaBtn.classList.add('btn-secondary');
+                registrarSalidaBtn.classList.remove('btn-primary');
+
+                registrarEntradaBtn.disabled = true;
+                registrarEntradaBtn.textContent = 'No disponible';
+                registrarEntradaBtn.classList.add('btn-secondary');
+                registrarEntradaBtn.classList.remove('btn-primary');
+            } else {
+                registrarSalidaBtn.disabled = false;
+                registrarSalidaBtn.textContent = 'Registrar Salida';
+                registrarSalidaBtn.classList.remove('btn-secondary');
+                registrarSalidaBtn.classList.add('btn-primary');
+
+                registrarEntradaBtn.disabled = false;
+                registrarEntradaBtn.textContent = 'Registrar Entrada';
+                registrarEntradaBtn.classList.remove('btn-secondary');
+                registrarEntradaBtn.classList.add('btn-primary');
+            }
+        }
+
+        // Cargar datos iniciales
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialData = <%- JSON.stringify(typeof modalData !== 'undefined' ? modalData : null) %>;
+            if (initialData) {
+                llenarModal(initialData);
+            }
+        });
+
+        // Ver detalles
+        async function verDetalles(id) {
+            try {
+                const response = await fetch(`/api/solicitudes/${id}`);
+                if (!response.ok) {
+                    Swal.fire({ icon: 'error', title: 'Solicitud no encontrada', text: 'El colaborador no tiene una solicitud asignada o está pendiente de aprobación.' });
+                    return;
                 }
-            };
-        } 
-
-        // Deshabilitar los botones de "Entrada" y "Salida" si existe una advertencia o si el estado está en estadosVencidos
-        if (modalData.advertencia !== null || estadosVencidos.includes(modalData.estado_actual)) {
-            console.log("Advertencia o estado vencido no permitido para entrada y salida: ", modalData.estado_actual);
-
-            // Deshabilitar y cambiar el estilo de los botones de entrada y salida
-            registrarSalidaBtn.disabled = true;
-            registrarSalidaBtn.textContent = 'No disponible';
-            registrarSalidaBtn.classList.add('btn-secondary');
-            registrarSalidaBtn.classList.remove('btn-primary');
-
-            registrarEntradaBtn.disabled = true;
-            registrarEntradaBtn.textContent = 'No disponible';
-            registrarEntradaBtn.classList.add('btn-secondary');
-            registrarEntradaBtn.classList.remove('btn-primary');
-        } else {
-            console.log("Estado permitido para entrada y salida: ", modalData.estado_actual);
-
-            // Habilitar y cambiar el estilo de los botones de salida y entrada
-            registrarSalidaBtn.disabled = false;
-            registrarSalidaBtn.textContent = 'Registrar Salida';
-            registrarSalidaBtn.classList.remove('btn-secondary');
-            registrarSalidaBtn.classList.add('btn-primary');
-
-            registrarEntradaBtn.disabled = false;
-            registrarEntradaBtn.textContent = 'Registrar Entrada';
-            registrarEntradaBtn.classList.remove('btn-secondary');
-            registrarEntradaBtn.classList.add('btn-primary');
+                const data = await response.json();
+                llenarModal(data);
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Ocurrió un error al obtener los detalles de la solicitud.' });
+                console.error(error);
+            }
         }
-
-        // Mostrar el modal
-        const modal = new bootstrap.Modal(document.getElementById('detallesModal'));
-        modal.show();
-    } else {
-        console.error('No se proporcionaron datos en modalData.');
-    }
-});
-
-let tipoRegistro = ''; // Almacenará si es "entrada" o "salida"
-let colaboradoresSeleccionados = []; // Almacenará los IDs de los colaboradores seleccionados
-
-
-document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('confirmacionModal');
-    const cerrarModal = document.getElementById('cerrarModal');
-    const cancelarBtn = document.getElementById('cancelarBtn');
-    const confirmarRegistroBtn = document.getElementById('confirmarRegistroBtn');
-
-    cerrarModal.addEventListener('click', () => modal.classList.add('hidden'));
-    cancelarBtn.addEventListener('click', () => modal.classList.add('hidden'));
-
-    window.mostrarConfirmacionModal = function(tipo) {
-        tipoRegistro = tipo;
-        const checkboxes = document.querySelectorAll('.colaborador-checkbox:checked');
-        if (checkboxes.length === 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Selecciona colaboradores',
-                text: `Debes seleccionar al menos un colaborador para registrar su ${tipo}.`,
-            });
-            return;
-            } 
- 
-            
-        colaboradoresSeleccionados = Array.from(checkboxes).map(checkbox => {
-      
-        const cardBody = checkbox.closest('.card-body'); // Encuentra el contenedor correcto
-            console.log(checkbox)
-        return {
-            id: checkbox.value.trim(),  // El checkbox ya tiene el ID en su value
-            nombre: cardBody.querySelector('.card-title').textContent.trim(),
-            cedula: cardBody.querySelector('.card-text').textContent.replace('Cédula: ', '').trim()
-        };
-    });
-
-
-        document.getElementById('listaColaboradoresConfirmacion').innerHTML = colaboradoresSeleccionados
-            .map(col => `<li>${col.nombre} - C.C ${col.cedula}</li>`)
-            .join('');
-
-        document.getElementById('confirmacionTexto').textContent = `¿Estás seguro de registrar la ${tipo} de los siguientes colaboradores?`;
-        modal.classList.remove('hidden');
-    };
-
-    document.getElementById('registrarEntradaBtn').onclick = () => { 
-    mostrarConfirmacionModal('entrada');
-}} );
-
-document.getElementById('confirmacionModal').addEventListener('show.bs.modal', () => {
-    document.getElementById('fechaRegistro').value = ''; // Limpiar el campo de fecha al abrir el modal
-});
-
-document.getElementById('registrarSalidaBtn').onclick = () => { 
-    mostrarConfirmacionModal('salida');
-};
-
-confirmarRegistroBtn.addEventListener('click', async () => { 
-    const fechaRegistro = document.getElementById('fechaRegistro').value; // Obtener la fecha del campo de entrada
-    const solicitudId = document.getElementById('detalleId').textContent; // Asegúrate de que esto sea correcto
-    const detalleEstado = document.getElementById('detalleEstado').textContent; // Asegúrate de que esto sea correcto
-    const colaboradors = colaboradoresSeleccionados
-    // Validar que se haya seleccionado al menos un colaborador y que se haya ingresado una fecha
-    if (!colaboradors.length) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Colaboradores no seleccionados',
-            text: 'Debes seleccionar al menos un colaborador.',
-        });
-        return;
-    }
-
-    if (!fechaRegistro) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Fecha requerida',
-            text: 'Por favor, ingresa la fecha de registro.',
-        });
-        return;
-    }
-
-    try { 
-        
-        const response = await fetch(`/api/solicitudes/${solicitudId}/registrar-${tipoRegistro}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({estado_actual: detalleEstado, solicitudId: solicitudId,  colaboradores: colaboradors, fecha: fechaRegistro })  
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Registro exitoso',
-                text: result.message,
-            });
-            document.querySelectorAll('.colaborador-checkbox:checked').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-
-            // Cerrar el modal
-            document.getElementById('confirmacionModal').classList.add('hidden');
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: result.message,
-            });
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Hubo un problema al registrar la operación.',
-        });
-        console.error('Error al registrar:', error);
-    }
-});
-
-
-async function verDetalles(id) {
-    try {       
-        const response = await fetch(`/api/solicitudes/${id}`);
-        
-        if (!response.ok) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Solicitud no encontrada',
-                text: 'No se ha encontrado registro de esta solicitud.',
-            });
-            return;
-        }
-
-        const data = await response.json();
-
-        // Asigna los datos al modal
-        modalData = data;
-        // Mostrar datos de la solicitud en el modal
-        document.getElementById('detalleId').textContent = data.id;
-        document.getElementById('detalleEmpresa').textContent = data.empresa;
-        document.getElementById('detalleLugar').textContent = data.lugar;
-        document.getElementById('detalleLabor').textContent = data.labor;
-        document.getElementById('detalleInterventor').textContent = data.interventor;
-        document.getElementById('advertencia').textContent = data.advertencia || '';
-
-        // Actualización de clases del estado dinámico
-        const estadoElement = document.getElementById('detalleEstado');
-        estadoElement.textContent = data.estado_actual; // Usar el estado calculado desde el servidor
-        estadoElement.className = 'badge'; // Reiniciar clases
-
-        // Aplicar clases dinámicas basado en estado_actual
-        if (data.estado_actual.includes('pendiente ingreso')) {
-            estadoElement.classList.add('bg-warning');
-        } else if (data.estado_actual.includes('vencida')) {
-            estadoElement.classList.add('bg-danger');
-        } else if (data.estado_actual === 'en labor') {
-            estadoElement.classList.add('bg-info');
-        } else if (data.estado_actual === 'labor detenida') {
-            estadoElement.classList.add('bg-secondary');
-        } else {
-            estadoElement.classList.add('bg-success');
-        }
-
-        // Formatear fechas
-        const formatFecha = (fecha) => {
-            const date = new Date(fecha);
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
-        };
-        document.getElementById('detalleInicio').textContent = formatFecha(data.inicio_obra);
-        document.getElementById('detalleFin').textContent = formatFecha(data.fin_obra);
-
-        // Mostrar colaboradores
-        const colaboradoresContainer = document.getElementById('detalleColaboradores');
-        colaboradoresContainer.innerHTML = ''; // Limpiar contenido previo
-
-        if (data.colaboradores && data.colaboradores.length > 0) {
-            data.colaboradores.forEach((col) => {
-                const colDiv = document.createElement('div');
-                colDiv.classList.add('col-md-4', 'mb-3');
-                colDiv.innerHTML = `
-                    <div class="card">
-                        <img src="${col.foto}" class="card-img-top" alt="Foto de ${col.nombre}">
-                        <div class="card-body">
-                            <h6 class="card-title">${col.nombre}</h6>
-                            <p class="card-text">Cédula: ${col.cedula}</p>
-                            <input type="checkbox" class="colaborador-checkbox" value="${col.id}">
-                        </div>
-                    </div>
-                `;
-                colaboradoresContainer.appendChild(colDiv);
-            });
-        } else {
-            colaboradoresContainer.innerHTML = '<p>No hay colaboradores disponibles.</p>';
-        }
-
-        // Configurar botones de ingreso, salida y entrada
-        const registrarIngresoBtn = document.getElementById('registrarIngresoBtn');
-        const registrarEntradaBtn = document.getElementById('registrarEntradaBtn');
-        const registrarSalidaBtn = document.getElementById('registrarSalidaBtn');
-
-        // Definir los estados vencidos
-        const estadosVencidos = [
-            'en labor - vencida',
-            'labor detenida',
-            'pendiente ingreso - vencido',
-            'en labor - vencida'
-        ];
-
-        // Deshabilitar "Registrar Ingreso" cuando el estado esté en los estadosVencidos o sea 'en labor'
-        if (estadosVencidos.includes(data.estado_actual) || data.advertencia !== null || data.estado_actual === 'en labor') {
-            console.log("Estado no permitido para registrar ingreso o hay advertencia: ", data.estado_actual, data.advertencia);
-            registrarIngresoBtn.disabled = true;
-            registrarIngresoBtn.classList.add('btn-secondary');
-            registrarIngresoBtn.textContent = 'No disponible';
-        } else {
-            console.log("Estado permitido para registrar ingreso: ", data.estado_actual);
-            registrarIngresoBtn.disabled = false;
-            registrarIngresoBtn.classList.remove('btn-secondary');
-            registrarIngresoBtn.classList.add('btn-primary');
-            registrarIngresoBtn.textContent = 'Registrar Ingreso';
-
-            registrarIngresoBtn.onclick = async () => {
-                try {
-                    const registerResponse = await fetch(`/api/solicitudes/${id}/registrar-ingreso`, {
-                        method: 'PUT',
-                    });
-
-                    if (registerResponse.ok) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Ingreso registrado',
-                            text: 'El ingreso se ha registrado correctamente.',
-                        });
-                        registrarIngresoBtn.disabled = true;
-                        registrarIngresoBtn.textContent = 'Registrado';
-                    } else {
-                        const errorData = await registerResponse.json();
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: errorData.message || 'No se pudo registrar el ingreso.',
-                        });
-                    }
-                } catch (err) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Ocurrió un error al intentar registrar el ingreso.',
-                    });
-                }
-            };
-        } 
-
-        // Deshabilitar los botones de "Entrada" y "Salida" si existe una advertencia o si el estado está en estadosVencidos
-        if (data.advertencia !== null || estadosVencidos.includes(data.estado_actual)) {
-            console.log("Advertencia o estado vencido no permitido para entrada y salida: ", data.estado_actual);
-
-            // Deshabilitar y cambiar el estilo de los botones de entrada y salida
-            registrarSalidaBtn.disabled = true;
-            registrarSalidaBtn.textContent = 'No disponible';
-            registrarSalidaBtn.classList.add('btn-secondary');
-            registrarSalidaBtn.classList.remove('btn-primary');
-
-            registrarEntradaBtn.disabled = true;
-            registrarEntradaBtn.textContent = 'No disponible';
-            registrarEntradaBtn.classList.add('btn-secondary');
-            registrarEntradaBtn.classList.remove('btn-primary');
-        } else {
-            console.log("Estado permitido para entrada y salida: ", data.estado_actual);
-
-            // Habilitar y cambiar el estilo de los botones de salida y entrada
-            registrarSalidaBtn.disabled = false;
-            registrarSalidaBtn.textContent = 'Registrar Salida';
-            registrarSalidaBtn.classList.remove('btn-secondary');
-            registrarSalidaBtn.classList.add('btn-primary');
-
-            registrarEntradaBtn.disabled = false;
-            registrarEntradaBtn.textContent = 'Registrar Entrada';
-            registrarEntradaBtn.classList.remove('btn-secondary');
-            registrarEntradaBtn.classList.add('btn-primary');
-        }
-
-        // Mostrar el modal
-        const modal = new bootstrap.Modal(document.getElementById('detallesModal'));
-        modal.show();
-
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Ocurrió un error al obtener los detalles de la solicitud.',
-        });
-        console.error(error);
-    }
-}
 
         function buscar() {
             const id = document.getElementById('buscarId').value;
-            if (id) {
-                verDetalles(id);
-            } else {
-                alert('Por favor, ingrese un ID válido.');
-            }
-        } 
-
-        
-function escanearQR() {
-    const overlay = document.createElement('div');
-    overlay.style.position = 'fixed';
-    overlay.style.top = 0;
-    overlay.style.left = 0;
-    overlay.style.width = '100%';
-    overlay.style.height = '100%';
-    overlay.style.background = 'rgba(0, 0, 0, 0.8)';
-    overlay.style.zIndex = 1000;
-
-    overlay.innerHTML = `
-        <div style="
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            margin: auto;
-            height: auto;
-            aspect-ratio: 3/4;
-            border-radius: 10px;
-            overflow: hidden;
-            background-color: #000;
-        ">
-            <video id="cameraVideo" style="width: 100%; height: 100%;" playsinline></video>
-            <div style="
-                position: absolute;
-                bottom: 10px;
-                width: 100%;
-                display: flex;
-                justify-content: space-between;
-                padding: 0 10px;
-            ">
-                <button id="closeCamera" style="
-                    background: red;
-                    color: white;
-                    border: none;
-                    padding: 5px 10px;
-                    border-radius: 5px;
-                ">Cerrar</button>
-                <button id="switchCamera" style="
-                    background: blue;
-                    color: white;
-                    border: none;
-                    padding: 5px 10px;
-                    border-radius: 5px;
-                ">Cambiar cámara</button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(overlay);
-
-    const video = document.getElementById('cameraVideo');
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    let currentFacingMode = 'environment';
-    let stream = null;
-
-    const startCamera = async (facingMode) => {
-        try {
-            if (stream) {
-                stream.getTracks().forEach((track) => track.stop());
-            }
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
-            video.srcObject = stream;
-            video.play();
-            scanQRCode();
-        } catch (err) {
-            alert('Error al acceder a la cámara: ' + err.message);
-            document.body.removeChild(overlay);
+            if (id) verDetalles(id);
+            else alert('Por favor, ingrese un ID válido.');
         }
-    };
 
-    const scanQRCode = () => {
-        const scan = () => {
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Lógica del modal de confirmación
+        let tipoRegistro = '';
+        let colaboradoresSeleccionados = [];
 
-                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, canvas.width, canvas.height);
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('confirmacionModal');
+            const cerrarModal = document.getElementById('cerrarModal');
+            const cancelarBtn = document.getElementById('cancelarBtn');
+            const confirmarRegistroBtn = document.getElementById('confirmarRegistroBtn');
 
-                if (code) {
-                    const qrUrl = code.data;
-                    let id;
-                    // Verificar si es una URL o un ID directo
-                    if (qrUrl.includes('/')) {
-                        id = qrUrl.split('/').pop(); // Si es URL, tomar el último segmento
-                    } else {
-                        id = qrUrl; // Si es ID directo, usarlo tal cual
-                    }
-                    // Limpiar el ID de cualquier carácter no deseado
-                    id = id.trim();
-                    stopCamera();
-                    console.log('ID escaneado:', id);
-                    
-                    // Redirigir a la URL con el ID
-                    window.location.href = `/vista-seguridad/${id}`;
+            cerrarModal.addEventListener('click', () => modal.classList.add('hidden'));
+            cancelarBtn.addEventListener('click', () => modal.classList.add('hidden'));
+
+            window.mostrarConfirmacionModal = function(tipo) {
+                tipoRegistro = tipo;
+                const checkboxes = document.querySelectorAll('.colaborador-checkbox:checked');
+                if (!checkboxes.length) {
+                    Swal.fire({ icon: 'warning', title: 'Selecciona colaboradores', text: `Debes seleccionar al menos un colaborador para registrar su ${tipo}.` });
                     return;
                 }
-                requestAnimationFrame(scan);
-            }
-        };
-        scan();
-    };
 
-    const stopCamera = () => {
-        if (stream) {
-            stream.getTracks().forEach((track) => track.stop());
+                colaboradoresSeleccionados = Array.from(checkboxes).map(checkbox => {
+                    const cardBody = checkbox.closest('.card-body');
+                    return {
+                        id: checkbox.value.trim(),
+                        nombre: cardBody.querySelector('.card-title').textContent.trim(),
+                        cedula: cardBody.querySelector('.card-text').textContent.replace('Cédula: ', '').trim()
+                    };
+                });
+
+                document.getElementById('listaColaboradoresConfirmacion').innerHTML = colaboradoresSeleccionados
+                    .map(col => `<li>${col.nombre} - C.C ${col.cedula}</li>`)
+                    .join('');
+                document.getElementById('confirmacionTexto').textContent = `¿Estás seguro de registrar la ${tipo} de los siguientes colaboradores?`;
+                modal.classList.remove('hidden');
+            };
+
+            document.getElementById('registrarEntradaBtn').onclick = () => mostrarConfirmacionModal('entrada');
+            document.getElementById('registrarSalidaBtn').onclick = () => mostrarConfirmacionModal('salida');
+
+            confirmarRegistroBtn.addEventListener('click', async () => {
+                const fechaRegistro = document.getElementById('fechaRegistro').value;
+                const solicitudId = document.getElementById('detalleId').textContent;
+                const detalleEstado = document.getElementById('detalleEstado').textContent;
+
+                if (!colaboradoresSeleccionados.length) {
+                    Swal.fire({ icon: 'warning', title: 'Colaboradores no seleccionados', text: 'Debes seleccionar al menos un colaborador.' });
+                    return;
+                }
+                if (!fechaRegistro) {
+                    Swal.fire({ icon: 'warning', title: 'Fecha requerida', text: 'Por favor, ingresa la fecha de registro.' });
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/solicitudes/${solicitudId}/registrar-${tipoRegistro}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ estado_actual: detalleEstado, solicitudId, colaboradores: colaboradoresSeleccionados, fecha: fechaRegistro })
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        Swal.fire({ icon: 'success', title: 'Registro exitoso', text: result.message });
+                        document.querySelectorAll('.colaborador-checkbox:checked').forEach(checkbox => checkbox.checked = false);
+                        modal.classList.add('hidden');
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: result.message });
+                    }
+                } catch (error) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al registrar la operación.' });
+                    console.error('Error al registrar:', error);
+                }
+            });
+        });
+
+        // Escanear QR (sin cambios, pero podría modularizarse si se repite en otro lugar)
+        function escanearQR() {
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = 0;
+            overlay.style.left = 0;
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.background = 'rgba(0, 0, 0, 0.8)';
+            overlay.style.zIndex = 1000;
+
+            overlay.innerHTML = `
+                <div style="position: relative; width: 100%; max-width: 400px; margin: auto; height: auto; aspect-ratio: 3/4; border-radius: 10px; overflow: hidden; background-color: #000;">
+                    <video id="cameraVideo" style="width: 100%; height: 100%;" playsinline></video>
+                    <div style="position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 10px;">
+                        <button id="closeCamera" style="background: red; color: white; border: none; padding: 5px 10px; border-radius: 5px;">Cerrar</button>
+                        <button id="switchCamera" style="background: blue; color: white; border: none; padding: 5px 10px; border-radius: 5px;">Cambiar cámara</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            const video = document.getElementById('cameraVideo');
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            let currentFacingMode = 'environment';
+            let stream = null;
+
+            const startCamera = async (facingMode) => {
+                try {
+                    if (stream) stream.getTracks().forEach(track => track.stop());
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+                    video.srcObject = stream;
+                    video.play();
+                    scanQRCode();
+                } catch (err) {
+                    alert('Error al acceder a la cámara: ' + err.message);
+                    document.body.removeChild(overlay);
+                }
+            };
+
+            const scanQRCode = () => {
+                const scan = () => {
+                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+                        if (code) {
+                            const qrUrl = code.data;
+                            let id = qrUrl.includes('/') ? qrUrl.split('/').pop() : qrUrl;
+                            id = id.trim();
+                            stopCamera();
+                            window.location.href = `/vista-seguridad/${id}`;
+                            return;
+                        }
+                        requestAnimationFrame(scan);
+                    }
+                };
+                scan();
+            };
+
+            const stopCamera = () => {
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                document.body.removeChild(overlay);
+            };
+
+            startCamera(currentFacingMode);
+            document.getElementById('closeCamera').onclick = stopCamera;
+            document.getElementById('switchCamera').onclick = () => {
+                currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+                startCamera(currentFacingMode);
+            };
         }
-        document.body.removeChild(overlay);
-    };
-
-    startCamera(currentFacingMode);
-
-    document.getElementById('closeCamera').onclick = stopCamera;
-
-    document.getElementById('switchCamera').onclick = () => {
-        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-        startCamera(currentFacingMode);
-    };
-} 
-
-</script>
+    </script>
 </body>
 </html>
+
+<% function getEstadoClass(estado) {
+    if (estado.includes('pendiente ingreso')) return 'bg-warning';
+    if (estado.includes('vencida')) return 'bg-danger';
+    if (estado === 'en labor') return 'bg-info';
+    if (estado === 'labor detenida') return 'bg-secondary';
+    return 'bg-success';
+} %>

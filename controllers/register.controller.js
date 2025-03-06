@@ -44,8 +44,8 @@ controller.registerForm = async (req, res) => {
 };
 
 controller.register = async (req, res) => {
-    const { username, password, role, empresa, nit } = req.body;
-    console.log('Formulario recibido:', { username, password, role, empresa, nit }); // Depuración de los valores recibidos
+    const { username, password, role, empresa, nit, email } = req.body;
+    console.log('Formulario recibido:', { username, password, role, empresa, nit, email });
 
     try {
         // Verificar si el usuario ya existe en la base de datos
@@ -56,50 +56,75 @@ controller.register = async (req, res) => {
             const [roles] = await connection.query('SELECT id, role_name FROM roles');
             return res.render('register', { 
                 title: 'Regístrate', 
-                roles,  // Pasar los roles nuevamente en caso de error
+                roles,
                 error: 'El usuario ya existe' 
             });
         }
 
+        // Obtener el nombre del rol para validar si es contratista
+        const [roleInfo] = await connection.query('SELECT role_name FROM roles WHERE id = ?', [role]);
+        const isContratista = roleInfo[0].role_name.toLowerCase() === 'contratista';
+
         // Validar que los campos necesarios no estén vacíos
         if (!username || !password || !role || !empresa || !nit) {
-            // Consultar los roles nuevamente si hay un error
             const [roles] = await connection.query('SELECT id, role_name FROM roles');
             return res.render('register', { 
                 title: 'Regístrate', 
-                roles,  // Pasar los roles nuevamente en caso de error
+                roles,
                 error: 'Usuario, contraseña, rol, empresa y NIT son obligatorios' 
             });
         }
 
-        // Asegurémonos de que el rol recibido es un ID, no un nombre
-        // Aquí se espera que 'role' sea un ID, no un nombre
-        const [roleResults] = await connection.query('SELECT id FROM roles WHERE id = ?', [role]);
-
-        if (roleResults.length === 0) {
-            console.log(`Rol no válido: ${role}`); // Depuración: imprimir el valor del rol recibido
-            // Consultar los roles nuevamente si hay un error
+        // Validar correo electrónico si es contratista
+        if (isContratista && !email) {
             const [roles] = await connection.query('SELECT id, role_name FROM roles');
             return res.render('register', { 
                 title: 'Regístrate', 
-                roles,  // Pasar los roles nuevamente en caso de error
+                roles,
+                error: 'El correo electrónico es obligatorio para contratistas' 
+            });
+        }
+
+        // Validar formato de correo electrónico si es contratista
+        if (isContratista) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                const [roles] = await connection.query('SELECT id, role_name FROM roles');
+                return res.render('register', { 
+                    title: 'Regístrate', 
+                    roles,
+                    error: 'Por favor, ingrese un correo electrónico válido' 
+                });
+            }
+        }
+
+        // Asegurémonos de que el rol recibido es un ID, no un nombre
+        const [roleResults] = await connection.query('SELECT id FROM roles WHERE id = ?', [role]);
+
+        if (roleResults.length === 0) {
+            console.log(`Rol no válido: ${role}`);
+            const [roles] = await connection.query('SELECT id, role_name FROM roles');
+            return res.render('register', { 
+                title: 'Regístrate', 
+                roles,
                 error: 'Rol no válido' 
             });
         }
 
-        const roleId = roleResults[0].id; // ID del rol seleccionado
-        console.log(`ID del rol seleccionado: ${roleId}`); // Depuración
+        const roleId = roleResults[0].id;
+        console.log(`ID del rol seleccionado: ${roleId}`);
 
         // Crear un nuevo usuario con la contraseña hasheada
         const hashedPassword = bcrypt.hashSync(password, 10);
 
         // Insertar el nuevo usuario en la base de datos
-        const result = await connection.query('INSERT INTO users (username, password, role_id, empresa, nit) VALUES (?, ?, ?, ?, ?)', [
+        const result = await connection.query('INSERT INTO users (username, password, role_id, empresa, nit, email) VALUES (?, ?, ?, ?, ?, ?)', [
             username,
             hashedPassword,
             roleId,
             empresa,
-            nit
+            nit,
+            email || null // Si no es contratista, guardar como null
         ]);
 
         res.redirect('/login');

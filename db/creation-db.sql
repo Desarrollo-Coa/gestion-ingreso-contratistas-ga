@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS users (
     role_id INT NOT NULL,
     empresa VARCHAR(255) NOT NULL,
     nit VARCHAR(20) NOT NULL,
+    email VARCHAR(255),  -- Campo para almacenar el correo electrónico
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
-    
 );
 
 

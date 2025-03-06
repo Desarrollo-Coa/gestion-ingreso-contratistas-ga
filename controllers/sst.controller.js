@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const QRCode = require('qrcode'); 
 const connection = require('../db/db');
 const SECRET_KEY = process.env.JWT_SECRET || 'secreto';
 const fs = require('fs');
@@ -503,6 +504,7 @@ async function downloadFromSpaces(fileUrl, localPath) {
   
 
 
+
 // Función para generar el HTML
 async function generateInformeHTML({ solicitud, colaboradores, contractorName, interventorName }) {
     try {
@@ -510,6 +512,9 @@ async function generateInformeHTML({ solicitud, colaboradores, contractorName, i
         for (const colaborador of colaboradores) {
             colaborador.fotoBase64 = colaborador.foto ? await convertWebPtoJpeg(colaborador.foto) : null;
             colaborador.cedulaFotoBase64 = colaborador.cedulaFoto ? await convertWebPtoJpeg(colaborador.cedulaFoto) : null;
+            // Generar QR para el ID del colaborador
+            const qrData =   `https://gestion-ingreso-contratistas-ga.vercel.app/vista-seguridad/${colaborador.id}`; // Usar el ID del colaborador como dato del QR 
+            colaborador.qrBase64 = await QRCode.toDataURL(qrData, { width: 100, margin: 1 }); // Generar QR en Base64
         }
 
         // Cargar la plantilla HTML
@@ -539,7 +544,7 @@ async function generateInformeHTML({ solicitud, colaboradores, contractorName, i
     }
 }
 
-// Controlador para descargar la solicitud
+// Controlador para descargar la solicitud (sin cambios relevantes aquí, solo se asegura que los datos incluyan el ID)
 controller.descargarSolicitud = async (req, res) => {
     const { id } = req.params;
     const tempDir = path.join('/tmp', `solicitud_${id}`);
@@ -559,7 +564,11 @@ controller.descargarSolicitud = async (req, res) => {
             return res.status(404).send('Solicitud no encontrada');
         }
 
-        const [colaboradores] = await connection.execute('SELECT cedula, nombre, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?', [id]);
+        // Asegurarse de incluir el ID del colaborador en la consulta
+        const [colaboradores] = await connection.execute(
+            'SELECT id, cedula, nombre, foto, cedulaFoto FROM colaboradores WHERE solicitud_id = ?',
+            [id]
+        );
         const [contratista] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].usuario_id]);
         const [interventor] = await connection.execute('SELECT username FROM users WHERE id = ?', [solicitud[0].interventor_id]);
 
@@ -568,7 +577,6 @@ controller.descargarSolicitud = async (req, res) => {
             solici.fin_obra = format(new Date(solici.fin_obra), 'dd/MM/yyyy');
         });
 
-        // Generar el HTML
         const htmlContent = await generateInformeHTML({
             solicitud: solicitud[0],
             colaboradores,
@@ -576,10 +584,8 @@ controller.descargarSolicitud = async (req, res) => {
             interventorName: interventor[0].username,
         });
 
-        // Guardar el HTML en un archivo
         fs.writeFileSync(htmlPath, htmlContent);
 
-        // Crear un archivo ZIP
         const output = fs.createWriteStream(zipPath);
         const archive = archiver('zip', { zlib: { level: 9 } });
 

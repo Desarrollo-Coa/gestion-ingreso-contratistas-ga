@@ -52,7 +52,7 @@ app.use((req, res) => {
 });
 
 // Servidor
-const PORT = 8800;
+const PORT = 3500;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
