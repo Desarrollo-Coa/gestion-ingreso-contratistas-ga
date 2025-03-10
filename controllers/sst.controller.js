@@ -10,18 +10,19 @@ const archiver = require('archiver');
 const { format } = require('date-fns');
 require('dotenv').config();
 const axios = require('axios');
-const AWS = require('aws-sdk'); 
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const pdf = require('html-pdf');
  
 
 const controller = {};
 
-const spacesEndpoint = new AWS.Endpoint('https://nyc3.digitaloceanspaces.com');
-const s3 = new AWS.S3({
-    endpoint: spacesEndpoint,
-    accessKeyId: process.env.DO_SPACES_KEY,
-    secretAccessKey: process.env.DO_SPACES_SECRET,
-    region: 'us-east-1',
+const s3Client = new S3Client({
+    endpoint: 'https://nyc3.digitaloceanspaces.com',
+    region: "us-east-1",
+    credentials: {
+        accessKeyId: process.env.DO_SPACES_KEY,
+        secretAccessKey: process.env.DO_SPACES_SECRET
+    }
 });
 
 
@@ -71,24 +72,24 @@ controller.vistaSst = async (req, res) => {
 
 // Función para subir un archivo a DigitalOcean Spaces
 async function uploadToSpaces(filePath, fileName) {
-  const fileContent = fs.readFileSync(filePath);
+    const fileContent = fs.readFileSync(filePath);
 
-  const params = {
-      Bucket: 'app-storage-contratistas',
-      Key: fileName,
-      Body: fileContent,
-      ACL: 'public-read' // Hacer el archivo público
-  };
+    const command = new PutObjectCommand({
+        Bucket: 'app-storage-contratistas',
+        Key: fileName,
+        Body: fileContent,
+        ACL: 'public-read'
+    });
 
-  try {
-      const data = await s3.upload(params).promise();
-      console.log("Resultado de la subida del zip: ", data)
-      
-      return data.Location; // Retorna la URL del archivo subido
-  } catch (error) {
-      console.error('Error al subir el archivo a DigitalOcean Spaces:', error);
-      return null;
-  }
+    try {
+        const response = await s3Client.send(command);
+        const fileUrl = `https://app-storage-contratistas.nyc3.digitaloceanspaces.com/${fileName}`;
+        console.log("Resultado de la subida del zip: ", { response, fileUrl });
+        return fileUrl;
+    } catch (error) {
+        console.error('Error al subir el archivo a DigitalOcean Spaces:', error);
+        return null;
+    }
 }
 
 
@@ -310,14 +311,18 @@ async function downloadFromSpaces(fileUrl, localPath) {
         return false;
     }
 
-    const params = {
+    const command = new GetObjectCommand({
         Bucket: 'app-storage-contratistas',
         Key: fileName,
-    };
+    });
 
     try {
-        const data = await s3.getObject(params).promise();
-        fs.writeFileSync(localPath, data.Body);
+        const response = await s3Client.send(command);
+        const chunks = [];
+        for await (const chunk of response.Body) {
+            chunks.push(chunk);
+        }
+        fs.writeFileSync(localPath, Buffer.concat(chunks));
         return true;
     } catch (error) {
         console.error(`Error al descargar el archivo ${fileName}:`, error);

@@ -13,13 +13,16 @@ require('dotenv').config();  // Cargar variables de entorno desde el archivo .en
 // const supabaseUrl = process.env.SUPABASE_URL;
 // const supabaseKey = process.env.SUPABASE_KEY;
 
-const AWS = require('aws-sdk');
+const { S3Client } = require('@aws-sdk/client-s3');
+const { Upload } = require('@aws-sdk/lib-storage');
 
-const spacesEndpoint = new AWS.Endpoint(process.env.DO_SPACES_ENDPOINT);
-const s3 = new AWS.S3({
-    endpoint: spacesEndpoint,
-    accessKeyId: process.env.DO_SPACES_KEY,
-    secretAccessKey: process.env.DO_SPACES_SECRET,
+const s3Client = new S3Client({
+    endpoint: process.env.DO_SPACES_ENDPOINT,
+    region: "us-east-1",
+    credentials: {
+        accessKeyId: process.env.DO_SPACES_KEY,
+        secretAccessKey: process.env.DO_SPACES_SECRET
+    }
 });
 
 // const supabase = createClient(supabaseUrl, supabaseKey);
@@ -64,17 +67,20 @@ function generateUniqueFilename(originalname) {
 //     }
 // }
 async function uploadToSpaces(buffer, filename) {
-    const params = {
-        Bucket: process.env.DO_SPACES_BUCKET, // Nombre del bucket en DigitalOcean Spaces
-        Key: filename, // Nombre del archivo en el bucket
-        Body: buffer, // Contenido del archivo
-        ACL: 'public-read', // Permisos del archivo (opcional)
-    };
+    const upload = new Upload({
+        client: s3Client,
+        params: {
+            Bucket: process.env.DO_SPACES_BUCKET,
+            Key: filename,
+            Body: buffer,
+            ACL: 'public-read'
+        }
+    });
 
     try {
-        const data = await s3.upload(params).promise();
+        const data = await upload.done();
         console.log('Archivo subido exitosamente a DigitalOcean Spaces:', data.Location);
-        return data.Location; // Retorna la URL del archivo en DigitalOcean Spaces
+        return data.Location;
     } catch (err) {
         console.error('Error al subir archivo a DigitalOcean Spaces:', err);
         throw err;

@@ -12,18 +12,16 @@ const QRCode = require('qrcode');
 const handlebars = require('handlebars'); 
 const { concurrency } = require('sharp');
 const emailService = require('../services/email.service');
+const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
  
-const AWS = require('aws-sdk');  
- 
- 
-
-const spacesEndpoint = new AWS.Endpoint('https://nyc3.digitaloceanspaces.com');
-const s3 = new AWS.S3({
-    endpoint: spacesEndpoint,
-    accessKeyId: process.env.DO_SPACES_KEY,
-    secretAccessKey: process.env.DO_SPACES_SECRET,
-    region: 'us-east-1',
+const s3Client = new S3Client({
+    endpoint: 'https://nyc3.digitaloceanspaces.com',
+    region: "us-east-1",
+    credentials: {
+        accessKeyId: process.env.DO_SPACES_KEY,
+        secretAccessKey: process.env.DO_SPACES_SECRET
+    }
 });
 
 
@@ -180,13 +178,13 @@ controller.eliminarSolicitud = async (req, res) => {
               ? fileUrl.replace(bucketUrlPrefix, '') 
               : fileUrl.split('/').pop(); // Fallback for simpler URLs
 
-          const params = {
-              Bucket: process.env.DO_SPACES_BUCKET, // Should be 'app-storage-contratistas'
-              Key: fileKey, // e.g., 'sst-documents/Solicitud_88.zip'
-          };
+          const command = new DeleteObjectCommand({
+              Bucket: process.env.DO_SPACES_BUCKET,
+              Key: fileKey,
+          });
 
           try {
-              await s3.deleteObject(params).promise();
+              await s3Client.send(command);
               console.log(`Archivo eliminado de Spaces: ${fileKey}`);
           } catch (error) {
               console.error(`Error al eliminar archivo de Spaces: ${fileKey}`, error);
